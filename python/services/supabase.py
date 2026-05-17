@@ -1,3 +1,4 @@
+import hashlib
 from typing import List, Optional
 
 from supabase import Client, create_client
@@ -95,10 +96,30 @@ class DatabaseService:
 
     def upsert_job(self, job: dict) -> Optional[str]:
         try:
-            result = self._client.rpc("fn_upsert_job", job).execute()
-            job_id = result.data
+            row = {k.removeprefix('p_'): v for k, v in job.items()}
+            row['content_hash'] = hashlib.md5(
+                f"{row.get('title', '').lower().strip()}"
+                f"::{row.get('company_id', '')}"
+                f"::{row.get('location', '')}".encode()
+            ).hexdigest()
+
+            existing = (
+                self._client.table("jobs")
+                .select("id")
+                .eq("content_hash", row["content_hash"])
+                .limit(1)
+                .execute()
+            )
+
+            if existing.data:
+                job_id = existing.data[0]["id"]
+                self._client.table("jobs").update(row).eq("id", job_id).execute()
+            else:
+                result = self._client.table("jobs").insert(row).execute()
+                job_id = result.data[0]["id"] if result.data else None
+
             if job_id:
-                logger.debug("Upserted job: %s → %s", job.get("p_title", "?"), job_id)
+                logger.debug("Upserted job: %s → %s", job.get("title", "?"), job_id)
             return job_id
         except Exception as e:
             self._log_err(f"Failed to upsert job '{job.get('p_title', '?')}'", e)

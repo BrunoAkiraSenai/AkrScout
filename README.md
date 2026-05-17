@@ -1,22 +1,22 @@
 <div align="center">
   <br/>
-  <img src="screenshots/logo.svg" alt="AKR Scout" width="80" style="border-radius: 12px;"/>
+  <img src="screenshots/logo.svg" alt="AkrScout" width="80" style="border-radius: 12px;"/>
   <br/>
-  <h1>AKR Scout</h1>
-  <h3>Intelligent Job Scouting Platform</h3>
+  <h1>AkrScout</h1>
+  <h3>Plataforma inteligente de busca de vagas de tecnologia</h3>
   <br/>
 
   <p>
-    Automated tech job aggregation · Real-time market analytics · Data-driven career insights
+    Automação de vagas tech · Analytics em tempo real · Insights de carreira baseados em dados
   </p>
 
   <br/>
 
   <!-- Badges -->
-  <a href="https://github.com/anomalyco/akrscout/actions">
+  <a href="https://github.com/BrunoAkiraSenai/akrscout/actions">
     <img src="https://img.shields.io/github/actions/workflow/status/anomalyco/akrscout/scraper.yml?branch=main&style=flat-square&label=Pipeline&color=6366f1" alt="Pipeline"/>
   </a>
-  <a href="https://github.com/anomalyco/akrscout">
+  <a href="https://github.com/BrunoAkiraSenai/akrscout">
     <img src="https://img.shields.io/badge/status-active-success?style=flat-square&color=22c55e" alt="Status"/>
   </a>
   <a href="LICENSE">
@@ -54,105 +54,105 @@
       <td><img src="screenshots/analytics.svg" alt="Analytics" width="400"/></td>
     </tr>
     <tr>
-      <td align="center"><em>Dashboard — real-time market overview</em></td>
-      <td align="center"><em>Analytics — skills, salary, and trends</em></td>
+      <td align="center"><em>Dashboard — visão geral do mercado em tempo real</em></td>
+      <td align="center"><em>Analytics — skills, salários e tendências</em></td>
     </tr>
     <tr>
       <td><img src="screenshots/jobs.svg" alt="Jobs" width="400"/></td>
       <td><img src="screenshots/favorites.svg" alt="Favorites" width="400"/></td>
     </tr>
     <tr>
-      <td align="center"><em>Jobs — search, filter, and scout</em></td>
-      <td align="center"><em>Favorites — save and track positions</em></td>
+      <td align="center"><em>Jobs — busca, filtros e scouting</em></td>
+      <td align="center"><em>Favorites — salve e acompanhe vagas</em></td>
     </tr>
   </table>
 
   <br/>
-  <sub><strong>Built by <a href="https://github.com/anomalyco">Bruno Akira Furumori</a></strong></sub>
+  <sub><strong>Desenvolvido por <a href="https://github.com/anomalyco">Bruno Akira Furumori</a></strong></sub>
   <br/>
-  <sub>Tech job scouting · Market intelligence · Career analytics</sub>
+  <sub>Scouting de vagas tech · Inteligência de mercado · Analytics de carreira</sub>
   <br/>
   <br/>
 </div>
 
 ---
 
-## Overview
+## Visão Geral
 
-AKR Scout is a full-stack SaaS platform that automatically aggregates, analyzes, and surfaces technology job opportunities. It combines automated web scraping with real-time analytics to provide data-driven career intelligence.
+O AkrScout é uma plataforma SaaS full-stack que agrega, analisa e exibe oportunidades de emprego em tecnologia de forma automatizada. Combina web scraping com analytics em tempo real para fornecer inteligência de carreira baseada em dados.
 
-The platform scrapes tech job boards daily, normalizes listings, extracts skills, and presents everything through a premium React dashboard. Built with a clean, modular architecture and production-grade CI/CD.
+A plataforma coleta vagas de tech diariamente, normaliza os anúncios, extrai skills e apresenta tudo através de um dashboard React. Construída com arquitetura modular e CI/CD de produção.
 
-### Why AKR Scout?
+### Por que AkrScout?
 
-- **Automated** — Jobs are collected daily, no manual effort required
-- **Data-driven** — Analytics reveal salary trends, skill demand, and market shifts
-- **Modern stack** — React 19, Supabase, Python, all on a serverless architecture
-- **Production-ready** — CI/CD, RLS security, automated pipelines, Vercel deploy
+- **Automático** — Vagas coletadas diariamente, sem esforço manual
+- **Data-driven** — Analytics revelam tendências salariais, demanda por skills e mudanças no mercado
+- **Stack moderna** — React 19, Supabase, Python, arquitetura serverless
+- **Pronto para produção** — CI/CD, RLS, pipelines automatizados, deploy Vercel
 
 ---
 
-## Features
+## Funcionalidades
 
 <table>
   <tr>
     <td width="50%">
-      <h3>🤖 Automated Scraping</h3>
-      <p>Daily pipeline using Playwright + BeautifulSoup. Deduplication via content hashing. Structured data extraction with skill parsing.</p>
+      <h3>🤖 Scraping Automatizado</h3>
+      <p>Pipeline diário com Playwright + BeautifulSoup. Deduplicação via content hashing. Extração estruturada com parsing de skills.</p>
     </td>
     <td width="50%">
-      <h3>📊 Real-time Analytics</h3>
-      <p>Market overview, salary by seniority, top skills, company rankings, remote vs on-site distribution. All powered by PostgreSQL aggregate views.</p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <h3>🔐 Authentication</h3>
-      <p>Supabase Auth with email/password and OAuth (Google, GitHub). Row-Level Security ensures data isolation per user.</p>
-    </td>
-    <td width="50%">
-      <h3>⭐ Smart Favorites</h3>
-      <p>Save positions with one click. Optimistic UI updates. Syncs with the database for persistent, cross-session access.</p>
+      <h3>📊 Analytics em Tempo Real</h3>
+      <p>Visão geral do mercado, salário por senioridade, top skills, ranking de empresas, distribuição remoto vs presencial. Tudo com aggregate views do PostgreSQL.</p>
     </td>
   </tr>
   <tr>
     <td width="50%">
-      <h3>🔍 Intelligent Filters</h3>
-      <p>Search by title or company. Filter by remote, seniority level, employment type. Debounced search with pagination.</p>
+      <h3>🔐 Autenticação</h3>
+      <p>Supabase Auth com email/senha. Row-Level Security garante isolamento de dados por usuário.</p>
     </td>
     <td width="50%">
-      <h3>📱 Responsive Design</h3>
-      <p>Mobile-first sidebar, adaptive layouts, touch-friendly controls. Premium dark theme with Tailwind CSS v4.</p>
+      <h3>⭐ Favoritos Inteligentes</h3>
+      <p>Salve vagas com um clique. UI com atualização otimista. Sincroniza com o banco para acesso persistente entre sessões.</p>
     </td>
   </tr>
   <tr>
     <td width="50%">
-      <h3>🔄 CI/CD Pipeline</h3>
-      <p>GitHub Actions runs the scraper daily. Automated dependency installation, Playwright setup, and log archiving.</p>
+      <h3>🔍 Filtros Inteligentes</h3>
+      <p>Busca por título ou empresa. Filtros por remoto, senioridade, tipo de contrato. Busca com debounce e paginação.</p>
     </td>
     <td width="50%">
-      <h3>🛡️ RLS Security</h3>
-      <p>Row-Level Security policies on every table. Public read for jobs, authenticated CRUD for favorites, service_role for ingestion.</p>
+      <h3>📱 Design Responsivo</h3>
+      <p>Sidebar mobile-first, layouts adaptáveis, controles touch-friendly. Tema escuro premium com Tailwind CSS v4.</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <h3>🔄 Pipeline CI/CD</h3>
+      <p>GitHub Actions executa o scraper diariamente. Instalação automatizada de dependências, setup do Playwright e arquivamento de logs.</p>
+    </td>
+    <td width="50%">
+      <h3>🛡️ Segurança RLS</h3>
+      <p>Políticas Row-Level Security em todas as tabelas. Leitura pública para vagas, CRUD autenticado para favoritos, service_role para ingestão.</p>
     </td>
   </tr>
 </table>
 
 ---
 
-## Architecture
+## Arquitetura
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│                    RemoteOK (source)                      │
+│                   Programathor (fonte)                     │
 └────────────────────┬─────────────────────────────────────┘
                      │
                      ▼
 ┌──────────────────────────────────────────────────────────┐
-│              Python Scraper (Playwright)                   │
+│              Python Scraper (httpx + JSON-LD)              │
 │                                                          │
-│  1. Fetch listings       2. Parse HTML/JSON               │
-│  3. Extract skills       4. Normalize data                │
-│  5. Generate hash        6. Upsert to Supabase            │
+│  1. Fetch listagem     2. Parse HTML/JSON                 │
+│  3. Extrair skills     4. Normalizar dados                │
+│  5. Gerar hash         6. Upsert no Supabase              │
 └────────────────────┬─────────────────────────────────────┘
                      │
                      ▼
@@ -189,123 +189,123 @@ The platform scrapes tech job boards daily, normalizes listings, extracts skills
 └──────────────────────────────────────────────────────────┘
 ```
 
-### Data Flow
+### Fluxo de Dados
 
-1. **Daily cron** triggers the GitHub Actions pipeline
-2. **Python scraper** launches Playwright Chromium, fetches job listings
-3. **HTML/JSON parsing** extracts structured data (title, company, salary, location, skills)
-4. **Deduplication** via content hash — identical listings are skipped
-5. **Database upsert** writes new jobs, links skills, generates analytics snapshot
-6. **React app** reads from Supabase aggregate views (RLS-enforced)
-7. **User** browses, searches, filters, and saves positions
+1. **Cron diário** aciona o pipeline do GitHub Actions
+2. **Python scraper** usa httpx para buscar listagens de vagas
+3. **Parsing HTML/JSON** extrai dados estruturados (título, empresa, salário, local, skills)
+4. **Deduplicação** via content hash — anúncios idênticos são ignorados
+5. **Upsert no banco** insere novas vagas, vincula skills, gera snapshot de analytics
+6. **React app** lê das aggregate views do Supabase (com RLS)
+7. **Usuário** navega, busca, filtra e salva vagas
 
 ---
 
 ## Tech Stack
 
 ### Frontend
-| Technology | Purpose |
-|-----------|---------|
-| [React 19](https://react.dev) | UI library with concurrent features |
-| [Vite 8](https://vitejs.dev) | Build tool and dev server |
-| [Tailwind CSS v4](https://tailwindcss.com) | Utility-first styling |
-| [React Router v7](https://reactrouter.com) | Client-side routing |
-| [Recharts](https://recharts.org) | Composable charting library |
-| [Lucide React](https://lucide.dev) | Icon library |
-| [Supabase JS](https://supabase.com) | Database client and auth |
+| Tecnologia | Propósito |
+|-----------|-----------|
+| [React 19](https://react.dev) | UI library com recursos concorrentes |
+| [Vite 8](https://vitejs.dev) | Build tool e dev server |
+| [Tailwind CSS v4](https://tailwindcss.com) | Estilização utility-first |
+| [React Router v7](https://reactrouter.com) | Roteamento client-side |
+| [Recharts](https://recharts.org) | Biblioteca de gráficos |
+| [Lucide React](https://lucide.dev) | Biblioteca de ícones |
+| [Supabase JS](https://supabase.com) | Database client e auth |
 
-### Backend & Data
-| Technology | Purpose |
-|-----------|---------|
+### Backend & Dados
+| Tecnologia | Propósito |
+|-----------|-----------|
 | [Supabase](https://supabase.com) | Backend-as-a-service (PostgreSQL, Auth, RLS) |
-| [PostgreSQL](https://postgresql.org) | Relational database with aggregate views |
-| Row-Level Security | Per-user data isolation |
+| [PostgreSQL](https://postgresql.org) | Banco relacional com aggregate views |
+| Row-Level Security | Isolamento de dados por usuário |
 
-### Scraping & Automation
-| Technology | Purpose |
-|-----------|---------|
-| [Python 3.12](https://python.org) | Scraping pipeline language |
-| [Playwright](https://playwright.dev) | Headless browser automation |
-| [BeautifulSoup 4](https://www.crummy.com/software/BeautifulSoup/) | HTML parsing |
-| [LXML](https://lxml.de) | Fast XML/HTML processing |
-| [Supabase Python](https://github.com/supabase-community/supabase-py) | Database ingestion |
+### Scraping & Automação
+| Tecnologia | Propósito |
+|-----------|-----------|
+| [Python 3.12](https://python.org) | Linguagem do pipeline de scraping |
+| [httpx](https://www.python-httpx.org) | HTTP client assíncrono |
+| [BeautifulSoup 4](https://www.crummy.com/software/BeautifulSoup/) | Parsing de HTML |
+| [LXML](https://lxml.de) | Processamento rápido de XML/HTML |
+| [Supabase Python](https://github.com/supabase-community/supabase-py) | Ingestão no banco |
 
 ### DevOps
-| Technology | Purpose |
-|-----------|---------|
-| [GitHub Actions](https://github.com/features/actions) | CI/CD and scheduled scraping |
-| [Vercel](https://vercel.com) | Frontend deployment |
-| [python-dotenv](https://github.com/theskumar/python-dotenv) | Environment configuration |
+| Tecnologia | Propósito |
+|-----------|-----------|
+| [GitHub Actions](https://github.com/features/actions) | CI/CD e scraping agendado |
+| [Vercel](https://vercel.com) | Deploy do frontend |
+| [python-dotenv](https://github.com/theskumar/python-dotenv) | Configuração de ambiente |
 
 ---
 
-## Database
+## Banco de Dados
 
-The database is a carefully designed PostgreSQL schema with 6 tables, 6 views, and 5 functions.
+O banco é um schema PostgreSQL com 6 tabelas, 6 views e 5 functions.
 
-### Tables
+### Tabelas
 
-| Table | Purpose |
-|-------|---------|
-| `companies` | Normalized company records |
-| `skills` | Skill taxonomy (40+ tech skills) |
-| `jobs` | Job listings with content hash dedup |
-| `job_skills` | Many-to-many job-to-skill mapping |
-| `favorites` | User-specific saved jobs (RLS-enforced) |
-| `analytics_snapshots` | Time-series market data |
+| Tabela | Propósito |
+|--------|-----------|
+| `companies` | Registros normalizados de empresas |
+| `skills` | Taxonomia de skills (40+ skills tech) |
+| `jobs` | Anúncios de vagas com dedup por content hash |
+| `job_skills` | Mapeamento many-to-many vaga-skill |
+| `favorites` | Vagas salvas por usuário (com RLS) |
+| `analytics_snapshots` | Dados de mercado em série temporal |
 
 ### Views
 
-| View | Purpose |
-|------|---------|
-| `vw_jobs` | Enriched job listings with company name and skills |
-| `vw_recent_jobs` | Jobs from the last 7 days |
-| `vw_top_skills` | Skill demand ranking |
-| `vw_top_companies` | Company hiring frequency |
-| `vw_remote_stats` | Remote vs on-site distribution |
-| `vw_salary_by_seniority` | Average salary ranges per seniority level |
+| View | Propósito |
+|------|-----------|
+| `vw_jobs` | Listagem enriquecida com nome da empresa e skills |
+| `vw_recent_jobs` | Vagas dos últimos 7 dias |
+| `vw_top_skills` | Ranking de demanda por skill |
+| `vw_top_companies` | Frequência de contratação por empresa |
+| `vw_remote_stats` | Distribuição remoto vs presencial |
+| `vw_salary_by_seniority` | Média salarial por nível de senioridade |
 
 ### Functions
 
-- `fn_generate_job_hash` — SHA-256 deduplication hash
-- `fn_toggle_favorite` — Safe favorite add/remove
-- `fn_upsert_job` — Idempotent job insertion
-- `fn_set_job_skills` — Batch skill association
+- `fn_generate_job_hash` — Hash SHA-256 para deduplicação
+- `fn_toggle_favorite` — Add/remove seguro de favoritos
+- `fn_upsert_job` — Inserção idempotente de vagas
+- `fn_set_job_skills` — Associação em lote de skills
 
-### Security
+### Segurança
 
-- **Public**: Read access to `jobs`, `companies`, `skills` (authenticated users)
-- **Authenticated**: Full CRUD on `favorites` (scoped to `auth.uid()`)
-- **Service Role**: Full write access for the scraper pipeline
+- **Público**: Leitura em `jobs`, `companies`, `skills` (usuários autenticados)
+- **Autenticado**: CRUD completo em `favorites` (escopo `auth.uid()`)
+- **Service Role**: Escrita total para o pipeline de scraping
 
 ---
 
-## Automation
+## Automação
 
-### GitHub Actions Pipeline
+### Pipeline GitHub Actions
 
-The scraper runs automatically every day at 06:00 UTC via a GitHub Actions workflow.
+O scraper executa automaticamente todo dia às 06:00 UTC via GitHub Actions.
 
 ```
 ┌──────────────────────────────────────────┐
-│  Schedule: 0 6 * * * (daily)             │
-│  Manual: workflow_dispatch (anytime)     │
+│  Schedule: 0 6 * * * (diário)            │
+│  Manual: workflow_dispatch (qualquer hora)│
 ├──────────────────────────────────────────┤
-│  1. Checkout repository                  │
-│  2. Setup Python 3.12 (cached)           │
-│  3. Install dependencies                 │
-│  4. Install Playwright Chromium          │
-│  5. Inject Supabase secrets              │
-│  6. Run python main.py                   │
-│  7. Upload logs as artifact              │
-│  8. Post summary to run page             │
+│  1. Checkout do repositório              │
+│  2. Setup Python 3.12 (cache)            │
+│  3. Instalar dependências                │
+│  4. Instalar Playwright Chromium         │
+│  5. Injetar secrets do Supabase          │
+│  6. Executar python main.py              │
+│  7. Upload de logs como artifact         │
+│  8. Postar sumário na página de execução │
 └──────────────────────────────────────────┘
 ```
 
-- **30-minute timeout** prevents runaway executions
-- **Logs retained** for 7 days as downloadable artifacts
-- **Summary page** shows status, duration, and log preview
-- **Manual trigger** supports DEBUG/INFO/WARNING log levels
+- **Timeout de 30 minutos** evita execuções infinitas
+- **Logs retidos** por 7 dias como artifacts
+- **Página de sumário** mostra status, duração e preview dos logs
+- **Trigger manual** suporta níveis DEBUG/INFO/WARNING
 
 ---
 
@@ -317,91 +317,88 @@ The scraper runs automatically every day at 06:00 UTC via a GitHub Actions workf
     <td><img src="screenshots/analytics.svg" alt="Analytics" width="400"/></td>
   </tr>
   <tr>
-    <td align="center"><strong>Dashboard</strong> — Market overview with stats, top skills, company rankings</td>
-    <td align="center"><strong>Analytics</strong> — Salary by seniority, remote vs on-site, skill trends</td>
+    <td align="center"><strong>Dashboard</strong> — Visão do mercado com stats, top skills, ranking de empresas</td>
+    <td align="center"><strong>Analytics</strong> — Salário por senioridade, remoto vs presencial, tendências de skills</td>
   </tr>
   <tr>
     <td><img src="screenshots/jobs.svg" alt="Jobs" width="400"/></td>
     <td><img src="screenshots/favorites.svg" alt="Favorites" width="400"/></td>
   </tr>
   <tr>
-    <td align="center"><strong>Jobs</strong> — Search, filter by seniority/remote, pagination</td>
-    <td align="center"><strong>Favorites</strong> — Saved positions with quick access</td>
+    <td align="center"><strong>Jobs</strong> — Busca, filtros por senioridade/remoto, paginação</td>
+    <td align="center"><strong>Favorites</strong> — Vagas salvas com acesso rápido</td>
   </tr>
   <tr>
     <td><img src="screenshots/login.svg" alt="Login" width="400"/></td>
     <td><img src="screenshots/mobile.svg" alt="Mobile" width="400"/></td>
   </tr>
   <tr>
-    <td align="center"><strong>Authentication</strong> — Supabase Auth with OAuth providers</td>
-    <td align="center"><strong>Mobile</strong> — Responsive design with collapsible sidebar</td>
+    <td align="center"><strong>Autenticação</strong> — Supabase Auth com email/senha</td>
+    <td align="center"><strong>Mobile</strong> — Design responsivo com sidebar recolhível</td>
   </tr>
 </table>
 
-> Screenshots will be added as the project evolves. Placeholder files are in the `screenshots/` directory.
+> Screenshots serão adicionadas conforme o projeto evolui. Arquivos placeholder estão no diretório `screenshots/`.
 
 ---
 
-## Getting Started
+## Começando
 
-### Prerequisites
+### Pré-requisitos
 
 - Node.js 20+
 - Python 3.12+
-- A Supabase project (free tier works)
-- Playwright browser support
+- Um projeto Supabase (plano gratuito funciona)
+- Suporte a Playwright browser
 
-### Frontend Setup
+### Setup Frontend
 
 ```bash
-# Clone the repository
-git clone https://github.com/anomalyco/akrscout.git
+# Clone o repositório
+git clone https://github.com/BrunoAkiraSenai/akrscout.git
 cd akrscout/frontend
 
-# Install dependencies
+# Instale as dependências
 npm install
 
-# Configure environment
+# Configure as variáveis de ambiente
 cp .env.example .env
-# Edit .env with your Supabase credentials
+# Edite .env com suas credenciais do Supabase
 
-# Start development server
+# Inicie o servidor de desenvolvimento
 npm run dev
 ```
 
-### Scraper Setup
+### Setup Scraper
 
 ```bash
 cd akrscout/python
 
-# Create virtual environment
+# Crie o virtual environment
 python -m venv venv
-source venv/bin/activate  # or `venv\Scripts\activate` on Windows
+source venv/bin/activate  # ou `venv\Scripts\activate` no Windows
 
-# Install dependencies
+# Instale as dependências
 pip install -r requirements.txt
 
-# Install Playwright browser
-playwright install chromium
-
-# Configure environment
+# Configure as variáveis de ambiente
 cp .env.example .env
-# Edit .env with your Supabase service role key
+# Edite .env com sua service role key do Supabase
 
-# Run the scraper
+# Execute o scraper
 python main.py
 ```
 
-### Database Setup
+### Setup Banco de Dados
 
-Run the SQL schema against your Supabase project:
+Execute o schema SQL no seu projeto Supabase:
 
 ```bash
-# Connect to your Supabase SQL editor and paste:
+# Conecte-se ao SQL editor do Supabase e cole:
 # supabase/schema.sql
 ```
 
-Or use the Supabase CLI:
+Ou use o Supabase CLI:
 
 ```bash
 supabase db push
@@ -409,153 +406,153 @@ supabase db push
 
 ---
 
-## Environment Variables
+## Variáveis de Ambiente
 
 ### Frontend (`frontend/.env`)
 
 ```env
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+VITE_SUPABASE_URL=https://seu-projeto.supabase.co
+VITE_SUPABASE_ANON_KEY=sua-chave-anon-supabase
 ```
 
 ### Python Scraper (`python/.env`)
 
 ```env
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_KEY=your-supabase-service-role-key
+SUPABASE_URL=https://seu-projeto.supabase.co
+SUPABASE_SERVICE_KEY=sua-service-role-key-supabase
 ```
 
-> **Never commit `.env` files.** The repository includes `.env.example` templates with placeholder values. The GitHub Actions workflow injects secrets at runtime via GitHub Secrets.
+> **Nunca commite arquivos `.env`.** O repositório inclui templates `.env.example` com valores placeholder. O GitHub Actions injeta secrets em tempo de execução via GitHub Secrets.
 
 ---
 
-## Engineering Highlights
+## Destaques de Engenharia
 
 <details>
-<summary><strong>Clean Architecture</strong> — Modular separation of concerns</summary>
+<summary><strong>Arquitetura Limpa</strong> — Separação modular de responsabilidades</summary>
 
 <br/>
 
-The frontend follows a strict layered architecture:
-- **services/** — Supabase client, API abstraction
-- **hooks/** — Custom hooks encapsulate all data fetching (useJobs, useAnalytics, useFavorites)
-- **contexts/** — Auth state, notification system
-- **components/** — Reusable UI primitives (StatCard, ChartCard, JobCard, Skeleton)
-- **pages/** — Route-level components compose hooks + components
-- **routes/** — Centralized routing with auth guards
+O frontend segue uma arquitetura em camadas estrita:
+- **services/** — Supabase client, abstração de API
+- **hooks/** — Custom hooks encapsulam toda a busca de dados (useJobs, useAnalytics, useFavorites)
+- **contexts/** — Estado de autenticação, sistema de notificações
+- **components/** — Primitivas UI reutilizáveis (StatCard, ChartCard, JobCard, Skeleton)
+- **pages/** — Componentes de rota que compõem hooks + components
+- **routes/** — Roteamento centralizado com guards de autenticação
 
-This makes the codebase predictable, testable, and easy to navigate.
+Isso torna o código previsível, testável e fácil de navegar.
 </details>
 
 <details>
-<summary><strong>Modular Pipeline</strong> — Extensible scraper architecture</summary>
+<summary><strong>Pipeline Modular</strong> — Arquitetura extensível de scrapers</summary>
 
 <br/>
 
-The Python scraper uses an abstract base class pattern:
-- **BaseScraper** — ABC defining the scraper contract
-- **RemoteOKScraper** — Concrete implementation for RemoteOK
-- **Parser layer** — Separates HTML parsing from fetching
-- **Service layer** — Database operations isolated in DatabaseService
-- **Tracker** — Pipeline instrumentation and metrics
+O scraper Python usa um padrão de abstract base class:
+- **BaseScraper** — ABC definindo o contrato do scraper
+- **ProgramathorScraper** — Implementação concreta para o Programathor
+- **Parser layer** — Separa o parsing HTML da busca
+- **Service layer** — Operações de banco isoladas no DatabaseService
+- **Tracker** — Instrumentação e métricas do pipeline
 
-Adding a new job source requires only a new scraper class implementing `fetch()` and `parse()`.
+Adicionar uma nova fonte de vagas requer apenas uma nova scraper class implementando `fetch()` e `parse()`.
 </details>
 
 <details>
-<summary><strong>Reusable Hooks</strong> — Custom React hooks for data access</summary>
+<summary><strong>Hooks Reutilizáveis</strong> — Custom React hooks para acesso a dados</summary>
 
 <br/>
 
-All Supabase queries are encapsulated in custom hooks:
-- `useJobs()` — Paginated job list with search, filters, sorting
-- `useAnalytics()` — Parallel fetches for all chart data
-- `useFavorites()` — Optimistic UI with Set-based cache and favorites sync
-- `useAuth()` — Session management with Supabase Auth
-- `useTheme()` — Dark mode with localStorage persistence
-- `useSEO()` — Dynamic document title and meta tags
+Todas as queries do Supabase são encapsuladas em custom hooks:
+- `useJobs()` — Lista paginada com busca, filtros, ordenação
+- `useAnalytics()` — Fetches paralelos para todos os dados de gráficos
+- `useFavorites()` — UI otimista com cache baseado em Set e sync de favoritos
+- `useAuth()` — Gerenciamento de sessão com Supabase Auth
+- `useTheme()` — Dark mode com persistência em localStorage
+- `useSEO()` — Título dinâmico e meta tags
 </details>
 
 <details>
-<summary><strong>Scalable Database</strong> — PostgreSQL with aggregate views</summary>
+<summary><strong>Banco Escalável</strong> — PostgreSQL com aggregate views</summary>
 
 <br/>
 
-Database design prioritizes query performance:
-- **Materialized-like views** — Pre-joined aggregates for dashboard queries
-- **Content hash index** — O(1) deduplication via `fn_generate_job_hash`
-- **RLS policies** — Row-level security without application overhead
-- **Batch operations** — `fn_set_job_skills` handles bulk skill associations
+O design do banco prioriza performance de query:
+- **Views materializadas** — Agregados pré-join para queries do dashboard
+- **Índice de content hash** — Deduplicação O(1) via `fn_generate_job_hash`
+- **Políticas RLS** — Segurança em nível de linha sem overhead na aplicação
+- **Operações em lote** — `fn_set_job_skills` lida com associações em massa de skills
 
-The view layer (`vw_*`) abstracts complex joins so the frontend queries simple, flat structures.
+A camada de views (`vw_*`) abstrai joins complexos para que o frontend consulte estruturas simples e planas.
 </details>
 
 <details>
-<summary><strong>Production-ready Frontend</strong> — Premium UX and performance</summary>
+<summary><strong>Frontend Pronto para Produção</strong> — UX premium e performance</summary>
 
 <br/>
 
-- **React 19** with memoized components (`React.memo`, `useCallback`, `useMemo`)
-- **Debounced search** (300ms) to reduce Supabase query volume
-- **Optimistic UI** for favorites — instant feedback, async sync
-- **Skeleton loading** with shimmer animation for every page
-- **Toast notifications** for user actions (favorites, auth, errors)
-- **Error boundaries** with retry capability
-- **Responsive design** — mobile-first sidebar with overlay drawer
-- **SEO** — Dynamic meta tags, Open Graph, descriptive titles
+- **React 19** com componentes memoizados (`React.memo`, `useCallback`, `useMemo`)
+- **Busca com debounce** (300ms) para reduzir volume de queries no Supabase
+- **UI otimista** para favoritos — feedback instantâneo, sync assíncrono
+- **Skeleton loading** com animação shimmer em todas as páginas
+- **Toast notifications** para ações do usuário (favoritos, auth, erros)
+- **Error boundaries** com capacidade de retry
+- **Design responsivo** — sidebar mobile-first com overlay drawer
+- **SEO** — Meta tags dinâmicas, Open Graph, títulos descritivos
 </details>
 
 <details>
-<summary><strong>CI/CD</strong> — Automated testing and deployment</summary>
+<summary><strong>CI/CD</strong> — Testes automatizados e deploy</summary>
 
 <br/>
 
-- **GitHub Actions** runs the scraper daily at 06:00 UTC
-- **Vercel** deploys the frontend automatically on push to main
-- **Artifact logging** retains 7 days of pipeline logs
-- **Secrets management** via GitHub Secrets (never in code)
-- **Manual trigger** supports log level selection (DEBUG/INFO/WARNING)
+- **GitHub Actions** executa o scraper diariamente às 06:00 UTC
+- **Vercel** faz deploy automático do frontend no push para main
+- **Artifact logging** retém 7 dias de logs do pipeline
+- **Gerenciamento de secrets** via GitHub Secrets (nunca no código)
+- **Trigger manual** com seleção de nível de log (DEBUG/INFO/WARNING)
 </details>
 
 ---
 
 ## Roadmap
 
-- [x] Automated job scraping
-- [x] Real-time analytics dashboard
-- [x] User authentication and favorites
-- [x] CI/CD pipeline with daily automation
-- [x] Responsive mobile experience
-- [ ] **AI-powered recommendations** — Match jobs to user profiles
-- [ ] **Salary insights** — Historical salary trends and projections
-- [ ] **Skill trend forecasting** — ML-based demand prediction
-- [ ] **Email notifications** — Daily digest of new matching positions
-- [ ] **Multi-source scraping** — LinkedIn, Indeed, Wellfound, etc.
-- [ ] **Chrome extension** — One-click save from any job board
+- [x] Scraping automatizado de vagas
+- [x] Dashboard de analytics em tempo real
+- [x] Autenticação de usuário e favoritos
+- [x] Pipeline CI/CD com automação diária
+- [x] Experiência mobile responsiva
+- [ ] **Recomendações com IA** — Match de vagas com perfil do usuário
+- [ ] **Insights salariais** — Tendências históricas e projeções
+- [ ] **Previsão de tendências de skills** — Predição de demanda baseada em ML
+- [ ] **Notificações por email** — Digest diário de novas vagas
+- [ ] **Scraping multi-fonte** — LinkedIn, Indeed, Wellfound, etc.
+- [ ] **Extensão Chrome** — Salve vagas de qualquer site com um clique
 
 ---
 
-## License
+## Licença
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+Este projeto está licenciado sob a MIT License — veja o arquivo [LICENSE](LICENSE) para detalhes.
 
 ---
 
 <br/>
 <div align="center">
   <sub>
-    <strong>Developed by Bruno Akira Furumori</strong>
+    <strong>Desenvolvido por Bruno Akira Furumori</strong>
     <br/>
     <a href="https://github.com/anomalyco">GitHub</a> ·
     <a href="https://linkedin.com/in/bruno-akira-furumori">LinkedIn</a>
     <br/>
     <br/>
-    <img src="https://img.shields.io/badge/Made%20with-React%20%7C%20Supabase%20%7C%20Python-6366f1?style=flat-square" alt="Made with"/>
+    <img src="https://img.shields.io/badge/Feito%20com-React%20%7C%20Supabase%20%7C%20Python-6366f1?style=flat-square" alt="Feito com"/>
     <br/>
     <br/>
-    <img src="screenshots/logo.svg" alt="AKR Scout" width="32" style="border-radius: 6px;"/>
+    <img src="screenshots/logo.svg" alt="AkrScout" width="32" style="border-radius: 6px;"/>
     <br/>
-    <sub>© 2026 AKR Scout. Intelligent job scouting platform.</sub>
+    <sub>© 2026 AkrScout. Plataforma inteligente de busca de vagas.</sub>
   </sub>
 </div>
 <br/>

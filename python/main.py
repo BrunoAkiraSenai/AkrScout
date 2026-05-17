@@ -4,10 +4,38 @@ import sys
 
 from analytics.tracker import PipelineTracker
 from scrapers.programathor import ProgramathorScraper
+from scrapers.indeed import IndeedScraper
 from services.supabase import DatabaseService
 from utils.logger import setup_logger
 
 logger = setup_logger()
+
+SCRAPERS = [
+    ProgramathorScraper,
+    IndeedScraper,
+]
+
+
+async def run_scraper(db, scraper_cls, tracker) -> int:
+    scraper = scraper_cls(db)
+    logger.info("Scraping source: %s", scraper.source_name())
+    start = time.monotonic()
+
+    try:
+        inserted = await scraper.run()
+        elapsed = time.monotonic() - start
+        logger.info(
+            "Inserted %d jobs from %s (%.2fs)",
+            inserted,
+            scraper.source_name(),
+            elapsed,
+        )
+        return inserted
+    except Exception as e:
+        logger.error(
+            "Scraping failed for %s: %s", scraper.source_name(), e, exc_info=True
+        )
+        return 0
 
 
 async def run_pipeline() -> None:
@@ -26,15 +54,10 @@ async def run_pipeline() -> None:
 
     db.load_skills()
 
-    scraper = ProgramathorScraper(db)
-    logger.info("Scraping source: %s", scraper.source_name())
-
-    try:
-        inserted = await scraper.run()
-        logger.info("Inserted %d jobs from %s", inserted, scraper.source_name())
-    except Exception as e:
-        logger.error("Scraping failed: %s", e, exc_info=True)
-        sys.exit(1)
+    total_inserted = 0
+    for scraper_cls in SCRAPERS:
+        inserted = await run_scraper(db, scraper_cls, tracker)
+        total_inserted += inserted
 
     try:
         db.generate_snapshot()
@@ -45,10 +68,8 @@ async def run_pipeline() -> None:
 
     logger.info("-" * 56)
     logger.info("  Pipeline Summary")
-    logger.info("  Found:     %d", result.total_found)
-    logger.info("  Inserted:  %d", result.inserted)
-    logger.info("  Skipped:   %d", result.skipped)
-    logger.info("  Errors:    %d", result.errors)
+    logger.info("  Sources:   %d", len(SCRAPERS))
+    logger.info("  Inserted:  %d", total_inserted)
     logger.info("  Duration:  %.2fs", result.elapsed)
     logger.info("=" * 56)
 

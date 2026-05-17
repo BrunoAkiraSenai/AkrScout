@@ -1,4 +1,5 @@
 import hashlib
+import re
 from typing import List, Optional
 
 from supabase import Client, create_client
@@ -59,21 +60,33 @@ class DatabaseService:
                 .select("slug, id")
                 .execute()
             )
-            self._skill_cache = {row["slug"]: row["id"] for row in result.data}
+            self._skill_cache = {
+                self._normalize_slug(row["slug"]): row["id"]
+                for row in result.data
+            }
             logger.info("Loaded %d skills from database", len(self._skill_cache))
             return self._skill_cache
         except Exception as e:
             self._log_err("Failed to load skills from database", e)
             return {}
 
+    def _normalize_slug(self, slug: str) -> str:
+        slug = slug.lower().strip()
+        slug = slug.replace(".", "-").replace("#", "sharp").replace("/", "-")
+        slug = slug.replace(" ", "-").replace("_", "-")
+        slug = re.sub(r"-+", "-", slug).strip("-")
+        return slug
+
     def get_or_create_skill(self, slug: str) -> Optional[str]:
+        slug = self._normalize_slug(slug)
         if slug in self._skill_cache:
             return self._skill_cache[slug]
 
         try:
+            display_name = slug.replace("-", " ").title()
             resp = (
                 self._client.table("skills")
-                .insert({"name": slug.replace("-", " ").title(), "slug": slug})
+                .insert({"name": display_name, "slug": slug})
                 .execute()
             )
             skill_id = resp.data[0]["id"]

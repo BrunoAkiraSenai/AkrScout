@@ -3,7 +3,7 @@ import time
 import sys
 
 from analytics.tracker import PipelineTracker
-from scrapers.remoteok import RemoteOKScraper
+from scrapers.programathor import ProgramathorScraper
 from services.supabase import DatabaseService
 from utils.logger import setup_logger
 
@@ -26,7 +26,7 @@ async def run_pipeline() -> None:
 
     db.load_skills()
 
-    scraper = RemoteOKScraper(db)
+    scraper = ProgramathorScraper(db)
     logger.info("Scraping source: %s", scraper.source_name())
 
     try:

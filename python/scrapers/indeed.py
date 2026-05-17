@@ -4,7 +4,7 @@ import random
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode
 
-from playwright.async_api import async_playwright, Page, BrowserContext
+from playwright.async_api import async_playwright, Page, BrowserContext, Browser
 
 from config.settings import (
     INDEED_SEARCH_URL,
@@ -55,23 +55,62 @@ class IndeedScraper(BaseScraper):
         delay = random.uniform(min_s, max_s)
         return delay
 
-    async def _create_context(self, playwright) -> BrowserContext:
+    async def _create_browser(self, playwright) -> Browser:
+        ua = random.choice(USER_AGENTS)
+        browser = await playwright.chromium.launch(
+            headless=BROWSER_HEADLESS,
+            args=[
+                "--disable-blink-features=AutomationControlled",
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+                "--disable-features=IsolateOrigins,site-per-process",
+                "--no-first-run",
+                "--no-default-browser-check",
+                "--disable-web-security",
+                "--disable-features=DialMediaRouteProvider",
+            ],
+        )
+        return browser
+
+    async def _create_context(self, browser: Browser) -> BrowserContext:
         ua = random.choice(USER_AGENTS)
         vp = random.choice(VIEWPORTS)
-        context = await playwright.chromium.launch_persistent_context(
-            user_data_dir="/tmp/indeed-scraper",
-            headless=BROWSER_HEADLESS,
+        context = await browser.new_context(
             user_agent=ua,
             viewport=vp,
             locale="pt-BR",
             timezone_id="America/Sao_Paulo",
             bypass_csp=True,
-            extra_http_headers={
-                "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-            },
         )
+        await self._apply_stealth(context)
         return context
+
+    async def _apply_stealth(self, context: BrowserContext) -> None:
+        await context.add_init_script("""
+            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+            Object.defineProperty(navigator, 'plugins', {
+                get: () => [1, 2, 3, 4, 5],
+            });
+            Object.defineProperty(navigator, 'languages', {
+                get: () => ['pt-BR', 'pt', 'en-US', 'en'],
+            });
+            window.chrome = {
+                runtime: {},
+                loadTimes: function() {},
+                csi: function() {},
+                app: {},
+            };
+            if (window.navigator.permissions) {
+                const orig = window.navigator.permissions.query.bind(window.navigator.permissions);
+                window.navigator.permissions.query = (p) => (
+                    p.name === 'notifications'
+                        ? Promise.resolve({ state: 'denied' })
+                        : orig(p)
+                );
+            }
+        """)
 
     async def _dismiss_cookies(self, page: Page) -> None:
         try:
@@ -141,7 +180,15 @@ class IndeedScraper(BaseScraper):
                     await asyncio.sleep(self._random_delay(1, 2))
 
                     cards = await self._extract_search_cards(page)
+                    blocked = await self._is_cloudflare_blocked(page)
                     logger.info("Found %d job cards on page %d for '%s'", len(cards), page_num + 1, query)
+
+                    if not cards and blocked and page_num == 0:
+                        logger.info("Cloudflare blocked Playwright, trying RSS fallback for '%s'", query)
+                        rss_cards = await self._search_rss(query)
+                        if rss_cards:
+                            cards = rss_cards
+                            logger.info("RSS fallback found %d jobs for '%s'", len(cards), query)
 
                     for card in cards:
                         if len(self._collected) >= INDEED_MAX_JOBS:
@@ -294,6 +341,88 @@ class IndeedScraper(BaseScraper):
             logger.warning("Card extraction error: %s", e)
 
         return cards
+
+    async def _is_cloudflare_blocked(self, page: Page) -> bool:
+        try:
+            text = await page.evaluate("document.body.innerText.substring(0, 500)")
+            lower = text.lower()
+            keywords = ["cloudflare", "ray id", "verificação adicional", "please confirm you are human",
+                        "checking your browser", "cf-ray", "attention required"]
+            return any(kw in lower for kw in keywords)
+        except Exception:
+            return False
+
+    async def _search_rss(self, query: str) -> List[Dict[str, Any]]:
+        import cloudscraper
+        import xml.etree.ElementTree as ET
+
+        url = f"https://br.indeed.com/rss?q={query.replace(' ', '+')}"
+        logger.debug("RSS fallback URL: %s", url)
+
+        try:
+            scraper = cloudscraper.create_scraper()
+            resp = scraper.get(url, timeout=30, headers={
+                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "application/rss+xml, application/xml, text/xml, */*",
+            })
+            resp.raise_for_status()
+
+            content_type = resp.headers.get("content-type", "")
+            if "xml" not in content_type and "html" in content_type.lower():
+                if "cloudflare" in resp.text[:500].lower() or "verificação" in resp.text[:500].lower():
+                    logger.warning("RSS feed also blocked by Cloudflare")
+                    return []
+
+            root = ET.fromstring(resp.content)
+            cards = []
+            for item in root.iter("item"):
+                try:
+                    title_el = item.find("title")
+                    link_el = item.find("link")
+                    desc_el = item.find("description")
+
+                    title = title_el.text.strip() if title_el is not None and title_el.text else ""
+                    link = link_el.text.strip() if link_el is not None and link_el.text else ""
+                    desc = desc_el.text.strip() if desc_el is not None and desc_el.text else ""
+
+                    if not title or not link:
+                        continue
+
+                    jk_match = re.search(r'jk=([a-fA-F0-9]+)', link)
+                    if not jk_match:
+                        continue
+                    jk = jk_match.group(1)
+
+                    company = ""
+                    location = ""
+                    if desc:
+                        lines = desc.replace("<br>", "\n").replace("<br/>", "\n").replace("</p>", "\n")
+                        lines = re.sub(r'<[^>]+>', '', lines)
+                        for line in lines.split("\n"):
+                            line = line.strip()
+                            if not line:
+                                continue
+                            if not company:
+                                company = line
+                            elif not location:
+                                location = line
+                                break
+
+                    cards.append({
+                        "jk": jk,
+                        "title": title,
+                        "company": company,
+                        "location": location,
+                        "url": f"https://br.indeed.com/viewjob?jk={jk}",
+                        "description": desc,
+                    })
+                except Exception as e:
+                    continue
+
+            return cards
+        except Exception as e:
+            logger.warning("RSS fallback failed: %s", e)
+            return []
 
     async def _enrich_job(self, context: BrowserContext, card: Dict[str, Any]) -> None:
         detail_page = await context.new_page()
@@ -581,11 +710,15 @@ class IndeedScraper(BaseScraper):
         logger.info("Indeed scraping started (max %d jobs, %d queries)", INDEED_MAX_JOBS, len(INDEED_SEARCH_QUERIES))
 
         async with async_playwright() as pw:
-            context = await self._create_context(pw)
+            browser = await self._create_browser(pw)
             try:
-                await self._search_pages(context)
+                context = await self._create_context(browser)
+                try:
+                    await self._search_pages(context)
+                finally:
+                    await context.close()
             finally:
-                await context.close()
+                await browser.close()
 
         logger.info("Indeed collected %d raw entries", len(self._collected))
         return self._collected

@@ -135,8 +135,8 @@ export default function Home() {
 
       {/* Hero */}
       <section className="relative overflow-hidden pt-32 pb-20 md:pt-40 md:pb-28">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_center,_var(--tw-gradient-stops))] from-indigo-900/15 via-transparent to-transparent" />
-        <div className="absolute -top-40 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-indigo-500/5 blur-3xl" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_center,_var(--tw-gradient-stops))] from-indigo-900/15 via-transparent to-transparent" />
+        <div className="pointer-events-none absolute -top-40 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-indigo-500/5 blur-3xl" />
         <div className="mx-auto max-w-7xl px-4 md:px-8">
           <div className="mx-auto max-w-3xl text-center">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-indigo-500/20 bg-indigo-500/5 px-4 py-1">
@@ -170,7 +170,7 @@ export default function Home() {
       </section>
 
       {/* Metrics */}
-      <section id="metrics" className="border-y border-slate-800/40 py-12">
+      <section id="metrics" className="scroll-mt-20 border-y border-slate-800/40 py-12">
         <div className="mx-auto max-w-7xl px-4 md:px-8">
           <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
             {metrics.map((metric, i) => (
@@ -184,7 +184,7 @@ export default function Home() {
       </section>
 
       {/* Features */}
-      <section id="features" className="py-20 md:py-28">
+      <section id="features" className="scroll-mt-20 py-20 md:py-28">
         <div className="mx-auto max-w-7xl px-4 md:px-8">
           <div className="mx-auto mb-16 max-w-2xl text-center">
             <h2 className="text-2xl font-bold tracking-tight text-slate-100 md:text-3xl">

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
+  <rect width="800" height="450" fill="#0f172a" rx="12"/>
+  <rect x="0" y="0" width="800" height="450" fill="url(#g)" opacity="0.05" rx="12"/>
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(400,180)" text-anchor="middle">
+    <rect x="-40" y="-40" width="80" height="80" rx="16" fill="url(#g)" opacity="0.2"/>
+    <circle cx="0" cy="0" r="28" fill="none" stroke="#6366f1" stroke-width="3" opacity="0.6"/>
+    <line x1="18" y1="18" x2="32" y2="32" stroke="#6366f1" stroke-width="3" stroke-linecap="round" opacity="0.6"/>
+  </g>
+  <text x="400" y="270" text-anchor="middle" fill="#475569" font-family="system-ui,sans-serif" font-size="16" font-weight="600">AKR Scout</text>
+  <text x="400" y="295" text-anchor="middle" fill="#334155" font-family="system-ui,sans-serif" font-size="13">dashboard — screenshot coming soon</text>
+</svg>

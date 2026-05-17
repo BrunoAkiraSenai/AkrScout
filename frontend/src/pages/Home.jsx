@@ -20,58 +20,58 @@ import {
 
 import { useTranslation } from 'react-i18next'
 
-const metrics = [
-  { value: '12K+', label: t('home.metric_jobs') },
-  { value: '850+', label: t('home.metric_companies') },
-  { value: '40+', label: t('home.metric_skills') },
-  { value: '95%', label: t('home.metric_accuracy') },
-]
-
-const features = [
-  {
-    icon: Crosshair,
-    title: t('home.feature_scouting'),
-    description: t('home.feature_scouting_desc'),
-  },
-  {
-    icon: BarChart3,
-    title: t('home.feature_analytics'),
-    description: t('home.feature_analytics_desc'),
-  },
-  {
-    icon: Heart,
-    title: t('home.feature_favorites'),
-    description: t('home.feature_favorites_desc'),
-  },
-  {
-    icon: TrendingUp,
-    title: t('home.feature_trends'),
-    description: t('home.feature_trends_desc'),
-  },
-  {
-    icon: Shield,
-    title: t('home.feature_quality'),
-    description: t('home.feature_quality_desc'),
-  },
-  {
-    icon: Layers,
-    title: t('home.feature_radar'),
-    description: t('home.feature_radar_desc'),
-  },
-]
-
-const testimonials = [
-  { name: t('home.testimonial_1_name'), role: t('home.testimonial_1_role'), content: t('home.testimonial_1_content'), rating: 5 },
-  { name: t('home.testimonial_2_name'), role: t('home.testimonial_2_role'), content: t('home.testimonial_2_content'), rating: 5 },
-  { name: t('home.testimonial_3_name'), role: t('home.testimonial_3_role'), content: t('home.testimonial_3_content'), rating: 5 },
-]
-
 export default function Home() {
   const { user, loading } = useAuth()
   const navigate = useNavigate()
   const [mobileMenu, setMobileMenu] = useState(false)
-  useSEO({ title: 'Intelligent Job Scouting', description: 'Discover tech opportunities, track market trends, and land your next role with data-driven insights.' })
   const { t } = useTranslation()
+  useSEO({ title: t('site.og_title'), description: t('site.og_description') })
+
+  const metrics = [
+    { value: '12K+', label: t('home.metric_jobs') },
+    { value: '850+', label: t('home.metric_companies') },
+    { value: '40+', label: t('home.metric_skills') },
+    { value: '95%', label: t('home.metric_accuracy') },
+  ]
+
+  const features = [
+    {
+      icon: Crosshair,
+      title: t('home.feature_scouting'),
+      description: t('home.feature_scouting_desc'),
+    },
+    {
+      icon: BarChart3,
+      title: t('home.feature_analytics'),
+      description: t('home.feature_analytics_desc'),
+    },
+    {
+      icon: Heart,
+      title: t('home.feature_favorites'),
+      description: t('home.feature_favorites_desc'),
+    },
+    {
+      icon: TrendingUp,
+      title: t('home.feature_trends'),
+      description: t('home.feature_trends_desc'),
+    },
+    {
+      icon: Shield,
+      title: t('home.feature_quality'),
+      description: t('home.feature_quality_desc'),
+    },
+    {
+      icon: Layers,
+      title: t('home.feature_radar'),
+      description: t('home.feature_radar_desc'),
+    },
+  ]
+
+  const testimonials = [
+    { name: t('home.testimonial_1_name'), role: t('home.testimonial_1_role'), content: t('home.testimonial_1'), rating: 5 },
+    { name: t('home.testimonial_2_name'), role: t('home.testimonial_2_role'), content: t('home.testimonial_2'), rating: 5 },
+    { name: t('home.testimonial_3_name'), role: t('home.testimonial_3_role'), content: t('home.testimonial_3'), rating: 5 },
+  ]
 
   useEffect(() => {
     if (!loading && user) navigate('/dashboard', { replace: true })
@@ -220,19 +220,19 @@ export default function Home() {
             </h2>
           </div>
           <div className="grid gap-6 md:grid-cols-3">
-            {testimonials.map((t) => (
-              <div key={t.name} className="rounded-xl border border-slate-800/40 bg-slate-900/30 p-6">
+            {testimonials.map((item) => (
+              <div key={item.name} className="rounded-xl border border-slate-800/40 bg-slate-900/30 p-6">
                 <div className="mb-3 flex gap-0.5">
-                  {Array.from({ length: t.rating }).map((_, i) => (
+                  {Array.from({ length: item.rating }).map((_, i) => (
                     <Star key={i} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
                   ))}
                 </div>
-                <p className="text-xs leading-relaxed text-slate-400">&ldquo;{t.content}&rdquo;</p>
+                <p className="text-xs leading-relaxed text-slate-400">&ldquo;{item.content}&rdquo;</p>
                 <div className="mt-4 flex items-center gap-3 border-t border-slate-800/40 pt-4">
                   <div className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-400 to-violet-600" />
                   <div>
-                    <p className="text-xs font-medium text-slate-200">{t.name}</p>
-                    <p className="text-[10px] text-slate-500">{t.role}</p>
+                    <p className="text-xs font-medium text-slate-200">{item.name}</p>
+                    <p className="text-[10px] text-slate-500">{item.role}</p>
                   </div>
                 </div>
               </div>

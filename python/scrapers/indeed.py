@@ -122,12 +122,17 @@ class IndeedScraper(BaseScraper):
                     url = f"{INDEED_SEARCH_URL}?{urlencode(params)}"
                     logger.debug("Fetching: %s", url)
 
-                    await page.goto(url, wait_until="domcontentloaded", timeout=REQUEST_TIMEOUT)
+                    await page.goto(url, wait_until="commit", timeout=REQUEST_TIMEOUT)
+                    await page.wait_for_load_state("networkidle", timeout=REQUEST_TIMEOUT)
                     await asyncio.sleep(self._random_delay(2, 4))
 
                     await self._dismiss_cookies(page)
 
-                    await page.wait_for_timeout(2000)
+                    for _ in range(3):
+                        await page.evaluate("window.scrollBy(0, 800)")
+                        await asyncio.sleep(self._random_delay(1, 2))
+
+                    await asyncio.sleep(self._random_delay(1, 2))
 
                     cards = await self._extract_search_cards(page)
                     logger.info("Found %d job cards on page %d for '%s'", len(cards), page_num + 1, query)
@@ -149,108 +154,119 @@ class IndeedScraper(BaseScraper):
     async def _extract_search_cards(self, page: Page) -> List[Dict[str, Any]]:
         cards = []
         try:
-            job_links = await page.query_selector_all('a[data-jk]')
-            if not job_links:
-                job_links = await page.query_selector_all("a.jobCardTap")
-            if not job_links:
-                job_links = await page.query_selector_all('a[href*="jk="]')
-            if not job_links:
-                job_links = await page.query_selector_all('a[data-testid="job-title"]')
+            page_url = page.url
+            page_title = await page.title()
+            logger.debug("Page title: %s", page_title)
 
-            seen = set()
-            for link in job_links:
-                try:
-                    jk = await link.get_attribute("data-jk")
-                    href = await link.get_attribute("href")
-                    if not jk and href:
-                        parsed = urlparse(href)
-                        qs = parse_qs(parsed.query)
-                        jk = qs.get("jk", [None])[0]
-                    if not jk or jk in seen:
-                        continue
-                    seen.add(jk)
+            blocked_keywords = ["captcha", "verify", "robot", "automated", "please confirm", "access denied"]
+            page_text = await page.evaluate("document.body.innerText.substring(0, 500)")
+            page_text_lower = page_text.lower()
+            for kw in blocked_keywords:
+                if kw in page_text_lower:
+                    logger.warning("Possible blocking detected on Indeed (keyword: '%s')", kw)
+                    break
 
-                    title_el = await link.query_selector("span")
-                    if not title_el:
-                        title_el = link
-                    title = await title_el.inner_text()
-                    title = title.strip()
+            cards = await page.evaluate("""
+                () => {
+                    const results = [];
 
-                    if not title:
-                        continue
+                    const allLinks = document.querySelectorAll('a[data-jk]');
+                    const seen = new Set();
 
-                    cards.append({
-                        "jk": jk,
-                        "title": title,
-                        "url": f"https://br.indeed.com/viewjob?jk={jk}",
-                    })
-                except Exception:
-                    continue
+                    for (const link of allLinks) {
+                        try {
+                            const jk = link.getAttribute('data-jk');
+                            if (!jk || seen.has(jk)) continue;
+                            seen.add(jk);
+
+                            let title = '';
+                            const titleEl = link.querySelector('span') || link.querySelector('h2') || link.querySelector('div[id*="title"]') || link;
+                            if (titleEl) {
+                                title = titleEl.innerText || titleEl.textContent || '';
+                            }
+                            title = title.trim();
+                            if (!title) continue;
+
+                            results.push({
+                                jk: jk,
+                                title: title,
+                                url: 'https://br.indeed.com/viewjob?jk=' + jk,
+                            });
+                        } catch(e) {}
+                    }
+
+                    return results;
+                }
+            """)
 
             if not cards:
-                cards = await self._extract_cards_fallback(page)
+                cards = await page.evaluate("""
+                    () => {
+                        const results = [];
+                        const seen = new Set();
+
+                        const allElements = document.querySelectorAll('*');
+                        for (const el of allElements) {
+                            try {
+                                const jk = el.getAttribute('data-jk');
+                                if (jk && !seen.has(jk)) {
+                                    seen.add(jk);
+                                    const link = el.tagName === 'A' ? el : el.querySelector('a');
+                                    const href = link ? (link.getAttribute('href') || '') : '';
+                                    const title = (el.innerText || el.textContent || '').trim().substring(0, 100);
+                                    if (title && title.length > 5) {
+                                        results.push({
+                                            jk: jk,
+                                            title: title,
+                                            url: 'https://br.indeed.com/viewjob?jk=' + jk,
+                                        });
+                                    }
+                                }
+                            } catch(e) {}
+                        }
+
+                        return results;
+                    }
+                """)
+
+            if not cards:
+                cards = await page.evaluate("""
+                    () => {
+                        const results = [];
+                        const seen = new Set();
+
+                        const links = document.querySelectorAll('a[href*="jk="]');
+                        for (const link of links) {
+                            try {
+                                const href = link.getAttribute('href') || '';
+                                const match = href.match(/jk=([a-f0-9]+)/i);
+                                if (!match) continue;
+                                const jk = match[1];
+                                if (!jk || seen.has(jk)) continue;
+                                seen.add(jk);
+
+                                let title = (link.innerText || link.textContent || '').trim();
+                                if (!title || title.length < 3) continue;
+
+                                results.push({
+                                    jk: jk,
+                                    title: title,
+                                    url: 'https://br.indeed.com/viewjob?jk=' + jk,
+                                });
+                            } catch(e) {}
+                        }
+
+                        return results;
+                    }
+                """)
+
+            if not cards:
+                logger.warning("No job cards found with any selector strategy")
+                body_preview = await page.evaluate("document.body.innerText.substring(0, 300)")
+                logger.debug("Page body preview: %s", body_preview.replace('\n', ' ')[:200])
 
         except Exception as e:
             logger.warning("Card extraction error: %s", e)
-
-        return cards
-
-    async def _extract_cards_fallback(self, page: Page) -> List[Dict[str, Any]]:
-        cards = []
-        try:
-            containers = [
-                '.job_seen_beacon',
-                'li[data-testid="jobListing"]',
-                '.jobsearch-SerpJobCard',
-                '[data-testid*="job"]',
-                '.resultContent',
-                '.job-result',
-            ]
-            container = None
-            for sel in containers:
-                els = await page.query_selector_all(sel)
-                if els:
-                    container = els
-                    break
-
-            if not container:
-                return cards
-
-            for el in container:
-                try:
-                    link = await el.query_selector("a")
-                    if not link:
-                        continue
-                    href = await link.get_attribute("href") or ""
-                    if "jk=" not in href and "data-jk" not in href:
-                        continue
-
-                    jk = await link.get_attribute("data-jk")
-                    if not jk:
-                        parsed = urlparse(href)
-                        qs = parse_qs(parsed.query)
-                        jk = qs.get("jk", [None])[0]
-                    if not jk:
-                        continue
-
-                    title_el = await link.query_selector("span, h2, div")
-                    if not title_el:
-                        title_el = link
-                    title = await title_el.inner_text()
-                    title = title.strip()
-                    if not title:
-                        continue
-
-                    cards.append({
-                        "jk": jk,
-                        "title": title,
-                        "url": f"https://br.indeed.com/viewjob?jk={jk}",
-                    })
-                except Exception:
-                    continue
-
-        except Exception as e:
-            logger.warning("Fallback card extraction error: %s", e)
 
         return cards
 

@@ -2,7 +2,7 @@ import asyncio
 import re
 import random
 from typing import Any, Dict, List, Optional
-from urllib.parse import urljoin, urlencode, urlparse, parse_qs
+from urllib.parse import urlencode
 
 from playwright.async_api import async_playwright, Page, BrowserContext
 
@@ -18,11 +18,10 @@ from config.settings import (
     REQUEST_TIMEOUT,
     BROWSER_HEADLESS,
 )
-from parsers.html_parser import parse_html
 from parsers.skill_extractor import SkillExtractor
 from services.supabase import DatabaseService
 from utils.logger import setup_logger
-from utils.normalizer import clean_html, parse_date, parse_salary, truncate
+from utils.normalizer import clean_html, parse_salary, truncate
 
 from .base import BaseScraper, ScrapedJob
 
@@ -122,14 +121,21 @@ class IndeedScraper(BaseScraper):
                     url = f"{INDEED_SEARCH_URL}?{urlencode(params)}"
                     logger.debug("Fetching: %s", url)
 
-                    await page.goto(url, wait_until="commit", timeout=REQUEST_TIMEOUT)
-                    await page.wait_for_load_state("networkidle", timeout=REQUEST_TIMEOUT)
-                    await asyncio.sleep(self._random_delay(2, 4))
+                    await page.goto(url, wait_until="domcontentloaded", timeout=REQUEST_TIMEOUT)
+                    await page.wait_for_load_state("load", timeout=REQUEST_TIMEOUT)
+                    await asyncio.sleep(self._random_delay(4, 6))
 
                     await self._dismiss_cookies(page)
 
+                    await asyncio.sleep(2)
+
+                    final_url = page.url
+                    page_title = await page.title()
+                    logger.debug("Indeed page title: %s", page_title)
+                    logger.debug("Indeed final URL: %s", final_url)
+
                     for _ in range(3):
-                        await page.evaluate("window.scrollBy(0, 800)")
+                        await page.evaluate("window.scrollBy(0, 600)")
                         await asyncio.sleep(self._random_delay(1, 2))
 
                     await asyncio.sleep(self._random_delay(1, 2))
@@ -154,94 +160,110 @@ class IndeedScraper(BaseScraper):
     async def _extract_search_cards(self, page: Page) -> List[Dict[str, Any]]:
         cards = []
         try:
-            page_url = page.url
-            page_title = await page.title()
-            logger.debug("Page title: %s", page_title)
-
-            blocked_keywords = ["captcha", "verify", "robot", "automated", "please confirm", "access denied"]
-            page_text = await page.evaluate("document.body.innerText.substring(0, 500)")
+            page_text = await page.evaluate("document.body.innerText.substring(0, 1000)")
             page_text_lower = page_text.lower()
-            for kw in blocked_keywords:
+
+            blocked = ["captcha", "verify", "robot", "automated", "access denied", "please confirm you are human"]
+            for kw in blocked:
                 if kw in page_text_lower:
-                    logger.warning("Possible blocking detected on Indeed (keyword: '%s')", kw)
-                    break
+                    logger.warning("Blocking detected on Indeed (keyword: '%s')", kw)
+                    body_preview = page_text.replace('\n', ' ')[:300]
+                    logger.debug("Blocked page: %s", body_preview)
+                    return cards
+
+            no_results = ["no results", "nenhum resultado", "0 resultados", "no jobs found", "no matching jobs"]
+            for nr in no_results:
+                if nr in page_text_lower:
+                    logger.info("Indeed returned no results for this query")
+                    return cards
 
             cards = await page.evaluate("""
                 () => {
                     const results = [];
-
-                    const allLinks = document.querySelectorAll('a[data-jk]');
                     const seen = new Set();
-
-                    for (const link of allLinks) {
+                    const links = document.querySelectorAll('a');
+                    for (const link of links) {
                         try {
-                            const jk = link.getAttribute('data-jk');
+                            const href = link.getAttribute('href') || '';
+                            const jkMatch = href.match(/[?&]jk=([a-fA-F0-9]+)/);
+                            if (!jkMatch) continue;
+                            const jk = jkMatch[1];
                             if (!jk || seen.has(jk)) continue;
                             seen.add(jk);
 
-                            let title = '';
-                            const titleEl = link.querySelector('span') || link.querySelector('h2') || link.querySelector('div[id*="title"]') || link;
-                            if (titleEl) {
-                                title = titleEl.innerText || titleEl.textContent || '';
+                            let title = (link.innerText || link.textContent || '').trim();
+                            if (!title || title.length < 3) continue;
+
+                            const parent = link.closest('[class*="card"], [class*="result"], [data-testid*="job"], li, .job_seen_beacon, article');
+                            let company = '';
+                            let location = '';
+                            if (parent) {
+                                const spans = parent.querySelectorAll('span, div');
+                                for (const s of spans) {
+                                    const txt = (s.innerText || '').trim();
+                                    if (!txt || txt === title) continue;
+                                    if (s.closest('a')) continue;
+                                    if (!company && txt.length > 1 && txt.length < 80 && !txt.includes('http')) company = txt;
+                                    else if (!location && txt.length > 1 && txt.length < 80 && !txt.includes('http')) location = txt;
+                                }
                             }
-                            title = title.trim();
-                            if (!title) continue;
 
                             results.push({
                                 jk: jk,
                                 title: title,
+                                company: company,
+                                location: location,
                                 url: 'https://br.indeed.com/viewjob?jk=' + jk,
                             });
                         } catch(e) {}
                     }
-
                     return results;
                 }
             """)
 
             if not cards:
+                logger.warning("No cards via href jk=, trying broader search...")
                 cards = await page.evaluate("""
                     () => {
                         const results = [];
                         const seen = new Set();
 
-                        const allElements = document.querySelectorAll('*');
+                        const allElements = document.querySelectorAll('[data-jk]');
                         for (const el of allElements) {
                             try {
                                 const jk = el.getAttribute('data-jk');
-                                if (jk && !seen.has(jk)) {
-                                    seen.add(jk);
-                                    const link = el.tagName === 'A' ? el : el.querySelector('a');
-                                    const href = link ? (link.getAttribute('href') || '') : '';
-                                    const title = (el.innerText || el.textContent || '').trim().substring(0, 100);
-                                    if (title && title.length > 5) {
-                                        results.push({
-                                            jk: jk,
-                                            title: title,
-                                            url: 'https://br.indeed.com/viewjob?jk=' + jk,
-                                        });
-                                    }
-                                }
+                                if (!jk || seen.has(jk) || jk.length < 5) continue;
+                                seen.add(jk);
+
+                                const title = (el.innerText || el.textContent || '').trim().substring(0, 100);
+                                if (!title || title.length < 5) continue;
+
+                                results.push({
+                                    jk: jk,
+                                    title: title,
+                                    company: '',
+                                    location: '',
+                                    url: 'https://br.indeed.com/viewjob?jk=' + jk,
+                                });
                             } catch(e) {}
                         }
-
                         return results;
                     }
                 """)
 
             if not cards:
+                logger.warning("No cards via data-jk, trying href pattern...")
                 cards = await page.evaluate("""
                     () => {
                         const results = [];
                         const seen = new Set();
-
-                        const links = document.querySelectorAll('a[href*="jk="]');
+                        const links = document.querySelectorAll('a[href*="viewjob"], a[href*="rc/clk"]');
                         for (const link of links) {
                             try {
                                 const href = link.getAttribute('href') || '';
-                                const match = href.match(/jk=([a-f0-9]+)/i);
-                                if (!match) continue;
-                                const jk = match[1];
+                                const jkMatch = href.match(/jk=([a-fA-F0-9]+)/);
+                                if (!jkMatch) continue;
+                                const jk = jkMatch[1];
                                 if (!jk || seen.has(jk)) continue;
                                 seen.add(jk);
 
@@ -251,19 +273,22 @@ class IndeedScraper(BaseScraper):
                                 results.push({
                                     jk: jk,
                                     title: title,
+                                    company: '',
+                                    location: '',
                                     url: 'https://br.indeed.com/viewjob?jk=' + jk,
                                 });
                             } catch(e) {}
                         }
-
                         return results;
                     }
                 """)
 
             if not cards:
-                logger.warning("No job cards found with any selector strategy")
-                body_preview = await page.evaluate("document.body.innerText.substring(0, 300)")
-                logger.debug("Page body preview: %s", body_preview.replace('\n', ' ')[:200])
+                logger.warning("No cards found via any strategy on Indeed")
+                body_sample = page_text.replace('\n', ' ')[:300]
+                logger.info("Indeed page content: %s", body_sample)
+                html_sample = await page.evaluate("document.body.innerHTML.substring(0, 1500)")
+                logger.debug("Indeed HTML sample: %s", html_sample[:500])
 
         except Exception as e:
             logger.warning("Card extraction error: %s", e)

@@ -4,8 +4,10 @@ import { useAuth } from '../hooks/useAuth'
 import { useSEO } from '../hooks/useSEO'
 import { useNotification } from '../contexts/NotificationContext'
 import { AlertCircle, Loader2, CheckCircle2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 export default function Register() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { user, signUp, error, clearError } = useAuth()
   const [name, setName] = useState('')
@@ -14,7 +16,7 @@ export default function Register() {
   const [submitting, setSubmitting] = useState(false)
   const [confirmed, setConfirmed] = useState(false)
   const notification = useNotification()
-  useSEO({ title: 'Create Account' })
+  useSEO({ title: t('register.title') })
 
   useEffect(() => {
     if (user) navigate('/dashboard', { replace: true })
@@ -30,7 +32,7 @@ export default function Register() {
     const { data, error } = await signUp(email, password)
     if (!error && data?.user && !data?.session) {
       setConfirmed(true)
-      notification.success('Account created! Check your email.')
+      notification.success(t('register.success'))
     }
     if (error) notification.error(error.message)
     setSubmitting(false)
@@ -44,10 +46,10 @@ export default function Register() {
             <CheckCircle2 className="h-6 w-6 text-emerald-400" />
           </div>
           <h1 className="text-xl font-bold tracking-tight text-slate-100">
-            Check your email
+            {t('register.confirmed_heading')}
           </h1>
           <p className="text-sm text-slate-500">
-            We sent a confirmation link to{' '}
+            {t('register.confirmed_description')}{' '}
             <span className="font-medium text-slate-300">{email}</span>
           </p>
         </div>
@@ -56,7 +58,7 @@ export default function Register() {
             to="/login"
             className="font-medium text-indigo-400 transition-colors hover:text-indigo-300"
           >
-            Back to sign in
+            {t('register.back_to_signin')}
           </Link>
         </p>
       </div>
@@ -67,10 +69,10 @@ export default function Register() {
     <div className="space-y-6">
       <div className="space-y-2 text-center">
         <h1 className="text-xl font-bold tracking-tight text-slate-100">
-          Create account
+          {t('register.heading')}
         </h1>
         <p className="text-sm text-slate-500">
-          Start scouting opportunities today
+          {t('register.description')}
         </p>
       </div>
 
@@ -78,35 +80,35 @@ export default function Register() {
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
             <label className="text-xs font-medium text-slate-400">
-              First name
+              {t('register.first_name')}
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Alex"
+              placeholder={t('register.first_name_placeholder')}
               className="w-full rounded-lg border border-slate-800/60 bg-slate-900/50 px-3.5 py-2.5 text-sm text-slate-200 placeholder-slate-600 outline-none transition-all duration-200 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20"
             />
           </div>
           <div className="space-y-2">
             <label className="text-xs font-medium text-slate-400">
-              Last name
+              {t('register.last_name')}
             </label>
             <input
               type="text"
-              placeholder="Rider"
+              placeholder={t('register.last_name_placeholder')}
               className="w-full rounded-lg border border-slate-800/60 bg-slate-900/50 px-3.5 py-2.5 text-sm text-slate-200 placeholder-slate-600 outline-none transition-all duration-200 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20"
             />
           </div>
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-medium text-slate-400">Email</label>
+          <label className="text-xs font-medium text-slate-400">{t('register.email_label')}</label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
+            placeholder={t('register.email_placeholder')}
             required
             className="w-full rounded-lg border border-slate-800/60 bg-slate-900/50 px-3.5 py-2.5 text-sm text-slate-200 placeholder-slate-600 outline-none transition-all duration-200 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20"
           />
@@ -114,13 +116,13 @@ export default function Register() {
 
         <div className="space-y-2">
           <label className="text-xs font-medium text-slate-400">
-            Password
+            {t('register.password_label')}
           </label>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Create a strong password"
+            placeholder={t('register.password_placeholder')}
             required
             minLength={6}
             className="w-full rounded-lg border border-slate-800/60 bg-slate-900/50 px-3.5 py-2.5 text-sm text-slate-200 placeholder-slate-600 outline-none transition-all duration-200 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20"
@@ -142,21 +144,21 @@ export default function Register() {
           {submitting ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Creating account...
+              {t('register.submitting')}
             </>
           ) : (
-            'Create Account'
+            t('register.submit')
           )}
         </button>
       </form>
 
       <p className="text-center text-xs text-slate-500">
-        Already have an account?{' '}
+        {t('register.has_account')}{' '}
         <Link
           to="/login"
           className="font-medium text-indigo-400 transition-colors hover:text-indigo-300"
         >
-          Sign in
+          {t('register.sign_in')}
         </Link>
       </p>
     </div>

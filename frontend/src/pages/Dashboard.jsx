@@ -22,6 +22,7 @@ import { ChartCard } from '../components/ChartCard'
 import { PageSkeleton } from '../components/Skeleton'
 import { ErrorState } from '../components/ErrorState'
 import { formatNumber } from '../lib/utils'
+import { useTranslation } from 'react-i18next'
 
 function CustomTooltip({ active, payload, label }) {
   if (!active || !payload) return null
@@ -40,6 +41,7 @@ function CustomTooltip({ active, payload, label }) {
 export default function Dashboard() {
   const { topSkills, topCompanies, remoteStats, loading, error, refetch } = useAnalytics()
   useSEO({ title: 'Dashboard' })
+  const { t } = useTranslation()
 
   if (error) return <ErrorState message={error} onRetry={refetch} />
   if (loading) return <PageSkeleton />
@@ -55,46 +57,46 @@ export default function Dashboard() {
     <div className="animate-fade-in space-y-6">
       <div>
         <h1 className="text-xl font-bold tracking-tight text-slate-100">
-          Dashboard
+          {t('dashboard.title')}
         </h1>
         <p className="mt-1 text-sm text-slate-500">
-          Overview of your scouting activity
+          {t('dashboard.subtitle')}
         </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           icon={Briefcase}
-          label="Total Jobs"
+          label={t('dashboard.total_jobs')}
           value={formatNumber(totalJobs)}
-          trend={remoteStats?.remote_percentage ? `Remote: ${remoteStats.remote_percentage}%` : null}
+          trend={remoteStats?.remote_percentage ? `${t('dashboard.remote')}: ${remoteStats.remote_percentage}%` : null}
           trendUp
         />
         <StatCard
           icon={Monitor}
-          label="Remote Jobs"
+          label={t('dashboard.remote_jobs')}
           value={formatNumber(remoteJobs)}
           trend={`${totalJobs ? ((remoteJobs / totalJobs) * 100).toFixed(0) : 0}%`}
           trendUp
         />
         <StatCard
           icon={Building2}
-          label="Companies"
+          label={t('dashboard.companies')}
           value={formatNumber(companiesCount)}
-          trend="active"
+          trend={t('dashboard.active')}
           trendUp
         />
         <StatCard
           icon={Sparkles}
-          label="Skills Tracked"
+          label={t('dashboard.skills_tracked')}
           value={formatNumber(skillsCount)}
-          trend="in demand"
+          trend={t('dashboard.in_demand')}
           trendUp
         />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <ChartCard title="Top Skills in Demand" subtitle="By number of job listings">
+        <ChartCard title={t('dashboard.chart_skills')} subtitle={t('dashboard.chart_skills_sub')}>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} layout="vertical" margin={{ left: 80 }}>
@@ -114,7 +116,7 @@ export default function Dashboard() {
           </div>
         </ChartCard>
 
-        <ChartCard title="Companies Hiring" subtitle="Most active employers">
+        <ChartCard title={t('dashboard.chart_companies')} subtitle={t('dashboard.chart_companies_sub')}>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
@@ -141,31 +143,31 @@ export default function Dashboard() {
 
       <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-5 transition-all duration-300 hover:border-slate-700/60">
         <h3 className="text-sm font-semibold text-slate-200">
-          Market Overview
+          {t('dashboard.market_overview')}
         </h3>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <div className="rounded-lg bg-slate-800/30 p-4 transition-all duration-200 hover:bg-slate-800/50">
-            <p className="text-xs text-slate-500">Remote Jobs</p>
+            <p className="text-xs text-slate-500">{t('dashboard.remote_jobs_label')}</p>
             <p className="mt-1 text-2xl font-bold text-slate-100">
               {remoteStats?.remote_percentage ?? 0}%
             </p>
-            <p className="mt-1 text-xs text-slate-600">of all listings</p>
+            <p className="mt-1 text-xs text-slate-600">{t('dashboard.of_all_listings')}</p>
           </div>
           <div className="rounded-lg bg-slate-800/30 p-4 transition-all duration-200 hover:bg-slate-800/50">
-            <p className="text-xs text-slate-500">On-site Jobs</p>
+            <p className="text-xs text-slate-500">{t('dashboard.onsite_jobs')}</p>
             <p className="mt-1 text-2xl font-bold text-slate-100">
               {remoteStats?.remote_percentage
                 ? (100 - remoteStats.remote_percentage).toFixed(1)
                 : 0}%
             </p>
-            <p className="mt-1 text-xs text-slate-600">of all listings</p>
+            <p className="mt-1 text-xs text-slate-600">{t('dashboard.of_all_listings')}</p>
           </div>
           <div className="rounded-lg bg-slate-800/30 p-4 transition-all duration-200 hover:bg-slate-800/50">
-            <p className="text-xs text-slate-500">Active Listings</p>
+            <p className="text-xs text-slate-500">{t('dashboard.active_listings')}</p>
             <p className="mt-1 text-2xl font-bold text-slate-100">
               {remoteStats?.active_remote_jobs ?? 0}
             </p>
-            <p className="mt-1 text-xs text-slate-600">currently open</p>
+            <p className="mt-1 text-xs text-slate-600">{t('dashboard.currently_open')}</p>
           </div>
         </div>
       </div>

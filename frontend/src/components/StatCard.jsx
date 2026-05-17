@@ -1,6 +1,8 @@
+import { useTranslation } from 'react-i18next'
 import { cn } from '../lib/utils'
 
 export function StatCard({ icon: Icon, label, value, trend, trendUp }) {
+  const { t } = useTranslation()
   return (
     <div className="group relative overflow-hidden rounded-xl border border-slate-800/60 bg-slate-900/50 p-5 transition-all duration-300 hover:border-slate-700/60 hover:bg-slate-900/80 hover:shadow-lg hover:shadow-slate-900/50">
       <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/[0.03] to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
@@ -22,7 +24,7 @@ export function StatCard({ icon: Icon, label, value, trend, trendUp }) {
               >
                 {trendUp ? '↑' : '↓'} {trend}
               </span>
-              <span className="text-xs text-slate-600">vs last month</span>
+              <span className="text-xs text-slate-600">{t('dashboard.vs_last_month')}</span>
             </div>
           )}
         </div>

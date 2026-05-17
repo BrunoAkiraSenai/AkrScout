@@ -1,22 +1,23 @@
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Heart, MapPin, Clock, Building2, ExternalLink } from 'lucide-react'
 import { formatDate } from '../lib/utils'
 
 export const JobCard = memo(function JobCard({ job, favorited, onToggleFavorite }) {
+  const { t } = useTranslation()
+  const employmentLabels = {
+    full_time: t('job.full_time'),
+    part_time: t('job.part_time'),
+    contract: t('job.contract'),
+    internship: t('job.internship'),
+    temporary: t('job.temporary'),
+  }
   const salary =
     job.salary_min && job.salary_max
       ? `$${job.salary_min.toLocaleString()} - $${job.salary_max.toLocaleString()}`
       : job.salary_min
         ? `From $${job.salary_min.toLocaleString()}`
         : null
-
-  const employmentLabels = {
-    full_time: 'Full-Time',
-    part_time: 'Part-Time',
-    contract: 'Contract',
-    internship: 'Internship',
-    temporary: 'Temporary',
-  }
 
   return (
     <div className="group rounded-xl border border-slate-800/60 bg-slate-900/50 p-4 transition-all duration-300 hover:border-slate-700/60 hover:bg-slate-900/80 hover:shadow-lg hover:shadow-slate-900/50">
@@ -33,7 +34,7 @@ export const JobCard = memo(function JobCard({ job, favorited, onToggleFavorite 
             )}
             {job.remote && (
               <span className="rounded-md bg-indigo-500/10 px-2 py-0.5 text-[10px] font-medium text-indigo-400 ring-1 ring-indigo-500/20">
-                Remote
+                {t('job.remote_badge')}
               </span>
             )}
           </div>
@@ -45,7 +46,7 @@ export const JobCard = memo(function JobCard({ job, favorited, onToggleFavorite 
             </span>
             <span className="flex items-center gap-1">
               <MapPin className="h-3 w-3" />
-              {job.location || 'Unknown'}
+              {job.location || t('job.unknown_location')}
             </span>
             {job.posted_at && (
               <span className="flex items-center gap-1">

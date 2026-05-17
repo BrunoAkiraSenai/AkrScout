@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -13,14 +14,14 @@ import { cn } from '../lib/utils'
 import { useAuth } from '../hooks/useAuth'
 import { Logo } from './Logo'
 
-const links = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/jobs', label: 'Jobs', icon: Briefcase },
-  { to: '/analytics', label: 'Analytics', icon: BarChart3 },
-  { to: '/favorites', label: 'Favorites', icon: Heart },
-]
-
 export function Sidebar({ collapsed, setCollapsed }) {
+  const { t } = useTranslation()
+  const links = [
+    { to: '/dashboard', label: t('sidebar.dashboard'), icon: LayoutDashboard },
+    { to: '/jobs', label: t('sidebar.jobs'), icon: Briefcase },
+    { to: '/analytics', label: t('sidebar.analytics'), icon: BarChart3 },
+    { to: '/favorites', label: t('sidebar.favorites'), icon: Heart },
+  ]
   const [mobileOpen, setMobileOpen] = useState(false)
   const location = useLocation()
   const { user, signOut } = useAuth()
@@ -86,7 +87,7 @@ export function Sidebar({ collapsed, setCollapsed }) {
             className="flex w-full items-center justify-center gap-2 rounded-lg p-1.5 text-xs text-slate-500 transition-colors hover:bg-rose-500/10 hover:text-rose-400"
           >
             <LogOut className="h-3.5 w-3.5 shrink-0" />
-            {!collapsed && <span>Sign out</span>}
+            {!collapsed && <span>{t('sidebar.sign_out')}</span>}
           </button>
           <button
             onClick={() => setCollapsed(!collapsed)}

@@ -8,8 +8,8 @@ export function formatNumber(num) {
   return num.toLocaleString()
 }
 
-export function formatDate(date) {
-  return new Intl.RelativeTimeFormat('en', { numeric: 'auto' }).format(
+export function formatDate(date, locale = 'pt-BR') {
+  return new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(
     -Math.round((Date.now() - new Date(date).getTime()) / 86400000),
     'day'
   )

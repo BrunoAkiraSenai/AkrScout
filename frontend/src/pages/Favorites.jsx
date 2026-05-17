@@ -6,8 +6,10 @@ import { useNotification } from '../contexts/NotificationContext'
 import { Skeleton } from '../components/Skeleton'
 import { EmptyState } from '../components/EmptyState'
 import { formatDate } from '../lib/utils'
+import { useTranslation } from 'react-i18next'
 
 const MemoFavoriteCard = memo(function FavoriteCard({ job, index, onToggle }) {
+  const { t } = useTranslation()
   const salary =
     job.salary_min && job.salary_max
       ? `$${job.salary_min.toLocaleString()} - $${job.salary_max.toLocaleString()}`
@@ -16,10 +18,10 @@ const MemoFavoriteCard = memo(function FavoriteCard({ job, index, onToggle }) {
         : null
 
   const labels = {
-    full_time: 'Full-Time',
-    part_time: 'Part-Time',
-    contract: 'Contract',
-    internship: 'Internship',
+    full_time: t('job.full_time'),
+    part_time: t('job.part_time'),
+    contract: t('job.contract'),
+    internship: t('job.internship'),
   }
 
   return (
@@ -46,12 +48,12 @@ const MemoFavoriteCard = memo(function FavoriteCard({ job, index, onToggle }) {
             </span>
             <span className="flex items-center gap-1">
               <MapPin className="h-3 w-3" />
-              {job.location || 'Unknown'}
+              {job.location || t('favorites.unknown_location')}
             </span>
             {job.favorited_at && (
               <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
-                Saved {formatDate(job.favorited_at)}
+                {t('favorites.saved_prefix')} {formatDate(job.favorited_at)}
               </span>
             )}
           </div>
@@ -95,6 +97,7 @@ const MemoFavoriteCard = memo(function FavoriteCard({ job, index, onToggle }) {
 })
 
 export default function Favorites() {
+  const { t } = useTranslation()
   const { favorites, loading, toggle } = useFavorites()
   const notification = useNotification()
   useSEO({ title: 'Favorites' })
@@ -102,7 +105,7 @@ export default function Favorites() {
   async function handleToggle(jobId) {
     const added = await toggle(jobId)
     if (!added) {
-      notification.info('Job removed from favorites')
+      notification.info(t('favorites.removed'))
     }
   }
 
@@ -110,12 +113,12 @@ export default function Favorites() {
     <div className="animate-fade-in space-y-6">
       <div>
         <h1 className="text-xl font-bold tracking-tight text-slate-100">
-          Favorites
+          {t('favorites.title')}
         </h1>
         <p className="mt-1 text-sm text-slate-500">
           {favorites.length > 0
-            ? `${favorites.length} saved position${favorites.length !== 1 ? 's' : ''}`
-            : 'Saved positions for later review'}
+            ? t('favorites.subtitle_saved', { count: favorites.length })
+            : t('favorites.subtitle_empty')}
         </p>
       </div>
 
@@ -124,8 +127,8 @@ export default function Favorites() {
       ) : favorites.length === 0 ? (
         <EmptyState
           icon={Heart}
-          title="No favorites yet"
-          description="Save jobs you're interested in to review later"
+          title={t('favorites.empty_title')}
+          description={t('favorites.empty_description')}
         />
       ) : (
         <div className="space-y-3">

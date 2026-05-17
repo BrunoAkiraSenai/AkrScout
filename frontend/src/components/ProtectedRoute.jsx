@@ -1,7 +1,9 @@
 import { Navigate, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../hooks/useAuth'
 
 function LoadingScreen() {
+  const { t } = useTranslation()
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-950">
       <div className="flex flex-col items-center gap-4">
@@ -10,8 +12,8 @@ function LoadingScreen() {
           <div className="h-3 w-3 rounded-full bg-indigo-500/40" />
         </div>
         <div className="flex flex-col items-center gap-1">
-          <p className="text-sm font-medium text-slate-400">AKR Scout</p>
-          <p className="text-xs text-slate-600">Loading your session...</p>
+          <p className="text-sm font-medium text-slate-400">{t('protected.loading_title')}</p>
+          <p className="text-xs text-slate-600">{t('protected.loading_subtitle')}</p>
         </div>
       </div>
     </div>

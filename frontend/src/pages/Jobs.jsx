@@ -9,10 +9,12 @@ import { useNotification } from '../contexts/NotificationContext'
 import { Skeleton } from '../components/Skeleton'
 import { EmptyState } from '../components/EmptyState'
 import { ChevronLeft, ChevronRight, Briefcase } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 const MemoJobCard = memo(JobCard)
 
 export default function Jobs() {
+  const { t } = useTranslation()
   const {
     jobs,
     count,
@@ -37,7 +39,7 @@ export default function Jobs() {
   async function handleToggle(jobId) {
     const added = await toggle(jobId)
     notification[added ? 'success' : 'info'](
-      added ? 'Job saved to favorites' : 'Job removed from favorites'
+      added ? t('jobs.saved_favorites') : t('jobs.removed_favorites')
     )
   }
 
@@ -45,17 +47,17 @@ export default function Jobs() {
     <div className="animate-fade-in space-y-6">
       <div>
         <h1 className="text-xl font-bold tracking-tight text-slate-100">
-          Jobs
+          {t('jobs.title')}
         </h1>
         <p className="mt-1 text-sm text-slate-500">
           {count > 0
-            ? `${count} positions found`
-            : 'Browse and scout tech positions'}
+            ? t('jobs.subtitle_count', { count })
+            : t('jobs.subtitle_browse')}
         </p>
       </div>
 
       <SearchBar
-        placeholder="Search by title or company..."
+        placeholder={t('jobs.search_placeholder')}
         onSearch={(value) => {
           setSearch(value)
           setPage(1)
@@ -79,11 +81,11 @@ export default function Jobs() {
       ) : jobs.length === 0 ? (
         <EmptyState
           icon={Briefcase}
-          title="No jobs found"
+          title={t('jobs.empty_title')}
           description={
             hasFilters
-              ? 'Try adjusting your filters or search terms'
-              : 'No jobs have been scraped yet. Run the scraping pipeline first.'
+              ? t('jobs.empty_description_filters')
+              : t('jobs.empty_description_no_data')
           }
           action={
             hasFilters ? (
@@ -91,7 +93,7 @@ export default function Jobs() {
                 onClick={clearFilters}
                 className="rounded-lg bg-slate-800/50 px-4 py-2 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-700/50"
               >
-                Clear filters
+                {t('jobs.clear_filters')}
               </button>
             ) : null
           }
@@ -112,7 +114,7 @@ export default function Jobs() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between border-t border-slate-800/60 pt-4">
               <p className="text-xs text-slate-500">
-                Page {page} of {totalPages} ({count} results)
+                {t('jobs.page_of', { page, total: totalPages, count })}
               </p>
               <div className="flex items-center gap-2">
                 <button

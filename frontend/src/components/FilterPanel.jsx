@@ -1,15 +1,16 @@
+import { useTranslation } from 'react-i18next'
 import { cn } from '../lib/utils'
 
-const filterOptions = [
-  { key: 'remote', label: 'Remote', value: true },
-  { key: 'seniority', label: 'Junior', value: 'junior' },
-  { key: 'seniority', label: 'Mid', value: 'mid' },
-  { key: 'seniority', label: 'Senior', value: 'senior' },
-  { key: 'employment_type', label: 'Full-Time', value: 'full_time' },
-  { key: 'employment_type', label: 'Contract', value: 'contract' },
-]
-
 export function FilterPanel({ activeFilters, onFilterChange, onClear, hasFilters }) {
+  const { t } = useTranslation()
+  const filterOptions = [
+    { key: 'remote', label: t('filter.remote'), value: true },
+    { key: 'seniority', label: t('filter.junior'), value: 'junior' },
+    { key: 'seniority', label: t('filter.mid'), value: 'mid' },
+    { key: 'seniority', label: t('filter.senior'), value: 'senior' },
+    { key: 'employment_type', label: t('filter.full_time'), value: 'full_time' },
+    { key: 'employment_type', label: t('filter.contract'), value: 'contract' },
+  ]
   function isActive(opt) {
     return activeFilters[opt.key] === opt.value
   }
@@ -37,7 +38,7 @@ export function FilterPanel({ activeFilters, onFilterChange, onClear, hasFilters
           onClick={onClear}
           className="rounded-lg px-3 py-1.5 text-xs font-medium text-slate-500 transition-colors hover:text-slate-300"
         >
-          Clear all
+          {t('filter.clear_all')}
         </button>
       )}
     </div>

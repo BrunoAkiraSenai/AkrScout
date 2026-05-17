@@ -19,6 +19,7 @@ import { PageSkeleton } from '../components/Skeleton'
 import { ErrorState } from '../components/ErrorState'
 import { formatNumber } from '../lib/utils'
 import { Briefcase, Monitor, Building2, Sparkles } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 const COLORS = ['#6366f1', '#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe', '#e0e7ff']
 
@@ -48,6 +49,7 @@ export default function Analytics() {
   } = useAnalytics()
 
   useSEO({ title: 'Analytics' })
+  const { t } = useTranslation()
 
   if (error) return <ErrorState message={error} onRetry={refetch} />
   if (loading) return <PageSkeleton />
@@ -61,52 +63,52 @@ export default function Analytics() {
     <div className="animate-fade-in space-y-6">
       <div>
         <h1 className="text-xl font-bold tracking-tight text-slate-100">
-          Analytics
+          {t('analytics.title')}
         </h1>
         <p className="mt-1 text-sm text-slate-500">
-          Deep insights into your scouting data
+          {t('analytics.subtitle')}
         </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           icon={Briefcase}
-          label="Total Listings"
+          label={t('analytics.total_listings')}
           value={formatNumber(totalJobs)}
-          trend="in database"
+          trend={t('analytics.in_database')}
           trendUp
         />
         <StatCard
           icon={Monitor}
-          label="Remote Rate"
+          label={t('analytics.remote_rate')}
           value={`${remotePercent}%`}
-          trend="of all jobs"
+          trend={t('analytics.of_all_jobs')}
           trendUp={remotePercent > 50}
         />
         <StatCard
           icon={Building2}
-          label="Companies"
+          label={t('analytics.companies')}
           value={formatNumber(companiesCount)}
-          trend="active"
+          trend={t('analytics.active')}
           trendUp
         />
         <StatCard
           icon={Sparkles}
-          label="Skills"
+          label={t('analytics.skills')}
           value={formatNumber(skillsCount)}
-          trend="detected"
+          trend={t('analytics.detected')}
           trendUp
         />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <ChartCard title="Job Distribution" subtitle="Remote vs On-site">
+        <ChartCard title={t('analytics.chart_distribution')} subtitle={t('analytics.chart_distribution_sub')}>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={[
-                    { name: 'Remote', value: remoteStats?.remote_jobs || 0 },
+                    { name: t('analytics.remote'), value: remoteStats?.remote_jobs || 0 },
                     {
                       name: 'On-site',
                       value: (remoteStats?.total_jobs || 0) - (remoteStats?.remote_jobs || 0),
@@ -129,7 +131,7 @@ export default function Analytics() {
           </div>
         </ChartCard>
 
-        <ChartCard title="Salary by Seniority" subtitle="Average ranges per level">
+        <ChartCard title={t('analytics.chart_salary')} subtitle={t('analytics.chart_salary_sub')}>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={salaryBySeniority || []}>
@@ -141,13 +143,13 @@ export default function Analytics() {
                   dataKey="avg_salary_min"
                   fill="#6366f1"
                   radius={[4, 4, 0, 0]}
-                  name="Avg Min"
+                  name={t('analytics.avg_min')}
                 />
                 <Bar
                   dataKey="avg_salary_max"
                   fill="#a78bfa"
                   radius={[4, 4, 0, 0]}
-                  name="Avg Max"
+                  name={t('analytics.avg_max')}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -156,7 +158,7 @@ export default function Analytics() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <ChartCard title="Top Skills" subtitle="By job listing count">
+        <ChartCard title={t('analytics.chart_skills')} subtitle={t('analytics.chart_skills_sub')}>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
@@ -180,7 +182,7 @@ export default function Analytics() {
           </div>
         </ChartCard>
 
-        <ChartCard title="Top Companies" subtitle="By job listing count">
+        <ChartCard title={t('analytics.chart_companies')} subtitle={t('analytics.chart_companies_sub')}>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart

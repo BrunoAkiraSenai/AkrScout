@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { ThemeProvider } from '../hooks/useTheme'
 import { AuthProvider } from '../contexts/AuthContext'
@@ -69,6 +70,7 @@ export function AppRoutes() {
 }
 
 function AuthCallback() {
+  const { t } = useTranslation()
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-950">
       <div className="flex flex-col items-center gap-4">
@@ -76,7 +78,7 @@ function AuthCallback() {
           <div className="absolute h-full w-full animate-spin rounded-full border-2 border-slate-800 border-t-indigo-500" />
           <div className="h-3 w-3 rounded-full bg-indigo-500/30" />
         </div>
-        <p className="text-xs text-slate-500">Completing authentication...</p>
+        <p className="text-xs text-slate-500">{t('auth_callback.message')}</p>
       </div>
     </div>
   )

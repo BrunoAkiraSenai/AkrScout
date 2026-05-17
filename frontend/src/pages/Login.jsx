@@ -4,8 +4,10 @@ import { useAuth } from '../hooks/useAuth'
 import { useSEO } from '../hooks/useSEO'
 import { useNotification } from '../contexts/NotificationContext'
 import { AlertCircle, Loader2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 export default function Login() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const { user, signIn, signInWithOAuth, error, clearError, loading } = useAuth()
@@ -13,7 +15,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const notification = useNotification()
-  useSEO({ title: 'Sign In' })
+  useSEO({ title: t('login.title') })
 
   const from = location.state?.from?.pathname || '/dashboard'
 
@@ -30,7 +32,7 @@ export default function Login() {
     setSubmitting(true)
     const { error } = await signIn(email, password)
     if (!error) {
-      notification.success('Welcome back!')
+      notification.success(t('login.welcome_back'))
       navigate(from, { replace: true })
     } else {
       notification.error(error.message)
@@ -46,21 +48,21 @@ export default function Login() {
     <div className="space-y-6">
       <div className="space-y-2 text-center">
         <h1 className="text-xl font-bold tracking-tight text-slate-100">
-          Welcome back
+          {t('login.heading')}
         </h1>
         <p className="text-sm text-slate-500">
-          Sign in to your AKR Scout account
+          {t('login.description')}
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <label className="text-xs font-medium text-slate-400">Email</label>
+          <label className="text-xs font-medium text-slate-400">{t('login.email_label')}</label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
+            placeholder={t('login.email_placeholder')}
             required
             className="w-full rounded-lg border border-slate-800/60 bg-slate-900/50 px-3.5 py-2.5 text-sm text-slate-200 placeholder-slate-600 outline-none transition-all duration-200 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20"
           />
@@ -69,13 +71,13 @@ export default function Login() {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <label className="text-xs font-medium text-slate-400">
-              Password
+              {t('login.password_label')}
             </label>
             <button
               type="button"
               className="text-[11px] text-slate-500 transition-colors hover:text-indigo-400"
             >
-              Forgot?
+              {t('login.forgot')}
             </button>
           </div>
           <input
@@ -103,10 +105,10 @@ export default function Login() {
           {submitting ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Signing in...
+              {t('login.submitting')}
             </>
           ) : (
-            'Sign In'
+            t('login.submit')
           )}
         </button>
       </form>
@@ -117,7 +119,7 @@ export default function Login() {
         </div>
         <div className="relative flex justify-center text-xs">
           <span className="bg-slate-950 px-2 text-slate-500">
-            Or continue with
+            {t('login.divider')}
           </span>
         </div>
       </div>
@@ -149,12 +151,12 @@ export default function Login() {
       </div>
 
       <p className="text-center text-xs text-slate-500">
-        Don&apos;t have an account?{' '}
+        {t('login.no_account')}{' '}
         <Link
           to="/register"
           className="font-medium text-indigo-400 transition-colors hover:text-indigo-300"
         >
-          Sign up
+          {t('login.sign_up')}
         </Link>
       </p>
     </div>

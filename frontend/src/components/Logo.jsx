@@ -13,7 +13,7 @@ export function Logo({ size = 'sm', showText = true }) {
           <line x1="14" y1="14" x2="18" y2="18" />
         </svg>
       </div>
-      {showText && <span className={`${s.text} font-bold tracking-tight text-slate-100`}>AKR Scout</span>}
+      {showText && <span className={`${s.text} font-bold tracking-tight text-slate-100`}>AkrScout</span>}
     </div>
   )
 }

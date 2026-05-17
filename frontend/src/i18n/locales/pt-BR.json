@@ -1,7 +1,7 @@
 {
-  "site.title": "AKR Scout — Inteligência em Oportunidades de Tech",
-  "site.description": "AKR Scout — Plataforma inteligente de busca de vagas. Descubra oportunidades em tecnologia, acompanhe tendências do mercado e conquiste sua próxima vaga.",
-  "site.og_title": "AKR Scout — Inteligência em Oportunidades de Tech",
+  "site.title": "AkrScout — Inteligência em Oportunidades de Tech",
+  "site.description": "AkrScout — Plataforma inteligente de busca de vagas. Descubra oportunidades em tecnologia, acompanhe tendências do mercado e conquiste sua próxima vaga.",
+  "site.og_title": "AkrScout — Inteligência em Oportunidades de Tech",
   "site.og_description": "Descubra oportunidades em tecnologia, acompanhe tendências e conquiste sua próxima vaga.",
 
   "nav.features": "Recursos",
@@ -11,7 +11,7 @@
 
   "home.badge": "Plataforma Inteligente de Busca de Vagas",
   "home.hero_title": "Nunca Mais Perca uma Oportunidade em Tech",
-  "home.hero_subtitle": "O AKR Scout monitora automaticamente milhares de vagas de tecnologia na web. Obtenha análises de mercado em tempo real, tendências de habilidades e alertas personalizados. Sua bússola de carreira orientada a dados.",
+  "home.hero_subtitle": "O AkrScout monitora automaticamente milhares de vagas de tecnologia na web. Obtenha análises de mercado em tempo real, tendências de habilidades e alertas personalizados. Sua bússola de carreira orientada a dados.",
   "home.cta_start": "Comece a Explorar Grátis",
   "home.cta_learn": "Saiba Mais",
 
@@ -36,7 +36,7 @@
   "home.feature_radar_desc": "Visão completa do cenário de tecnologia. De startups a big techs.",
 
   "home.testimonials_title": "Confiado por profissionais de tecnologia",
-  "home.testimonial_1": "O AKR Scout me ajudou a acompanhar oportunidades em mais de 50 empresas. Conquistei a vaga dos meus sonhos em 3 semanas.",
+  "home.testimonial_1": "O AkrScout me ajudou a acompanhar oportunidades em mais de 50 empresas. Conquistei a vaga dos meus sonhos em 3 semanas.",
   "home.testimonial_1_name": "Alex M.",
   "home.testimonial_1_role": "Engenheiro Sênior",
   "home.testimonial_2": "Só as análises já valem a pena. Vejo exatamente quais habilidades estão em alta em tempo real.",
@@ -47,7 +47,7 @@
   "home.testimonial_3_role": "Gerente de Engenharia",
 
   "home.cta_title": "Pronto para explorar sua próxima oportunidade?",
-  "home.cta_subtitle": "Junte-se a milhares de profissionais de tecnologia que usam o AKR Scout para ficar à frente do mercado.",
+  "home.cta_subtitle": "Junte-se a milhares de profissionais de tecnologia que usam o AkrScout para ficar à frente do mercado.",
   "home.cta_free": "Comece Grátis",
   "home.cta_signin": "Entrar",
   "home.footer": "Plataforma inteligente de busca de vagas.",
@@ -128,7 +128,7 @@
 
   "login.title": "Entrar",
   "login.heading": "Bem-vindo de volta",
-  "login.description": "Entre na sua conta AKR Scout",
+  "login.description": "Entre na sua conta AkrScout",
   "login.email_label": "Email",
   "login.email_placeholder": "voce@exemplo.com",
   "login.password_label": "Senha",
@@ -190,7 +190,7 @@
   "error.title": "Algo deu errado",
   "error.try_again": "Tentar novamente",
 
-  "protected.loading_title": "AKR Scout",
+  "protected.loading_title": "AkrScout",
   "protected.loading_subtitle": "Carregando sua sessão...",
 
   "auth_callback.message": "Completando autenticação..."

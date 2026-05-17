@@ -1,7 +1,7 @@
 {
-  "site.title": "AKR Scout — Intelligent Job Scouting",
-  "site.description": "AKR Scout — Intelligent job scouting platform. Discover tech opportunities, track market trends, and land your next role.",
-  "site.og_title": "AKR Scout — Intelligent Job Scouting",
+  "site.title": "AkrScout — Intelligent Job Scouting",
+  "site.description": "AkrScout — Intelligent job scouting platform. Discover tech opportunities, track market trends, and land your next role.",
+  "site.og_title": "AkrScout — Intelligent Job Scouting",
   "site.og_description": "Discover tech opportunities, track market trends, and land your next role.",
 
   "nav.features": "Features",
@@ -11,7 +11,7 @@
 
   "home.badge": "Intelligent Job Scouting Platform",
   "home.hero_title": "Never Miss a Tech Opportunity Again",
-  "home.hero_subtitle": "AKR Scout automatically tracks thousands of tech jobs across the web. Get real-time market analytics, skill trends, and personalized job alerts. Your data-driven career compass.",
+  "home.hero_subtitle": "AkrScout automatically tracks thousands of tech jobs across the web. Get real-time market analytics, skill trends, and personalized job alerts. Your data-driven career compass.",
   "home.cta_start": "Start Scouting Free",
   "home.cta_learn": "Learn More",
 
@@ -36,7 +36,7 @@
   "home.feature_radar_desc": "Comprehensive view of the tech landscape. From startups to big tech.",
 
   "home.testimonials_title": "Trusted by tech professionals",
-  "home.testimonial_1": "AKR Scout helped me track opportunities across 50+ companies. Landed my dream role in 3 weeks.",
+  "home.testimonial_1": "AkrScout helped me track opportunities across 50+ companies. Landed my dream role in 3 weeks.",
   "home.testimonial_1_name": "Alex M.",
   "home.testimonial_1_role": "Senior Engineer",
   "home.testimonial_2": "The analytics alone are worth it. I can see exactly what skills are trending in real-time.",
@@ -47,7 +47,7 @@
   "home.testimonial_3_role": "Engineering Manager",
 
   "home.cta_title": "Ready to scout your next opportunity?",
-  "home.cta_subtitle": "Join thousands of tech professionals who use AKR Scout to stay ahead of the market.",
+  "home.cta_subtitle": "Join thousands of tech professionals who use AkrScout to stay ahead of the market.",
   "home.cta_free": "Get Started Free",
   "home.cta_signin": "Sign In",
   "home.footer": "Intelligent job scouting platform.",
@@ -128,7 +128,7 @@
 
   "login.title": "Sign In",
   "login.heading": "Welcome back",
-  "login.description": "Sign in to your AKR Scout account",
+  "login.description": "Sign in to your AkrScout account",
   "login.email_label": "Email",
   "login.email_placeholder": "you@example.com",
   "login.password_label": "Password",
@@ -190,7 +190,7 @@
   "error.title": "Something went wrong",
   "error.try_again": "Try again",
 
-  "protected.loading_title": "AKR Scout",
+  "protected.loading_title": "AkrScout",
   "protected.loading_subtitle": "Loading your session...",
 
   "auth_callback.message": "Completing authentication..."

@@ -8,7 +8,7 @@ export function useSEO({ title, description } = {}) {
     const prevOgDesc = document.querySelector('meta[property="og:description"]')
     const prevOgUrl = document.querySelector('meta[property="og:url"]')
 
-    const base = 'AKR Scout'
+    const base = 'AkrScout'
     document.title = title ? `${title} · ${base}` : base
 
     if (description) {

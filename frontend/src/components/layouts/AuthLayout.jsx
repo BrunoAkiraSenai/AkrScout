@@ -14,7 +14,7 @@ export function AuthLayout() {
               <Crosshair className="h-5 w-5 text-white" />
             </div>
             <span className="text-lg font-semibold text-slate-100">
-              AKR Scout
+              AkrScout
             </span>
           </div>
         </div>
@@ -56,7 +56,7 @@ export function AuthLayout() {
               <Crosshair className="h-5 w-5 text-white" />
             </div>
             <span className="text-lg font-semibold text-slate-100">
-              AKR Scout
+              AkrScout
             </span>
           </div>
           <Outlet />

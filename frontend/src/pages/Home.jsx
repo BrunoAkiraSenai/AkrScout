@@ -94,7 +94,7 @@ export default function Home() {
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-500/20">
               <Crosshair className="h-5 w-5 text-white" />
             </div>
-            <span className="text-lg font-bold text-slate-100">AKR Scout</span>
+            <span className="text-lg font-bold text-slate-100">AkrScout</span>
           </div>
           <div className="hidden items-center gap-6 md:flex">
             <a href="#features" className="text-xs font-medium text-slate-400 transition-colors hover:text-slate-200">{t('nav.features')}</a>
@@ -117,7 +117,7 @@ export default function Home() {
       {mobileMenu && (
         <div className="fixed inset-0 z-[60] bg-slate-950/98 backdrop-blur-xl md:hidden">
           <div className="flex h-16 items-center justify-between px-4">
-            <span className="text-lg font-bold text-slate-100">AKR Scout</span>
+            <span className="text-lg font-bold text-slate-100">AkrScout</span>
             <button onClick={() => setMobileMenu(false)} className="text-slate-400">
               <X className="h-5 w-5" />
             </button>
@@ -281,10 +281,10 @@ export default function Home() {
               <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-indigo-500 to-violet-600">
                 <Crosshair className="h-3.5 w-3.5 text-white" />
               </div>
-              <span className="text-sm font-bold text-slate-200">AKR Scout</span>
+              <span className="text-sm font-bold text-slate-200">AkrScout</span>
             </div>
             <p className="text-xs text-slate-600">
-              © {new Date().getFullYear()} AKR Scout. {t('home.footer')}
+              © {new Date().getFullYear()} AkrScout. {t('home.footer')}
             </p>
           </div>
         </div>

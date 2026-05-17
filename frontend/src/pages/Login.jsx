@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useSEO } from '../hooks/useSEO'
 import { useNotification } from '../contexts/NotificationContext'
-import { AlertCircle, Loader2 } from 'lucide-react'
+import { AlertCircle, Loader2, ArrowLeft } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 export default function Login() {
@@ -50,6 +50,15 @@ export default function Login() {
           {t('login.description')}
         </p>
       </div>
+
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
+        className="flex items-center gap-1.5 text-xs text-slate-500 transition-colors hover:text-indigo-400"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Voltar
+      </button>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">

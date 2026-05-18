@@ -52,7 +52,37 @@ jobs:
         uses: actions/checkout@v4
 
       # ------------------------------------------------------------------
-      # 2. Setup Python with caching
+      # 2. Commit & branch debug
+      # ------------------------------------------------------------------
+      - name: Debug commit info
+        run: |
+          echo "::group::Commit Debug"
+          echo "Commit SHA:  $(git rev-parse HEAD)"
+          echo "Branch:      $(git rev-parse --abbrev-ref HEAD)"
+          echo "Trigger:     ${{ github.event_name }}"
+          echo "Workflow:    ${{ github.workflow }}"
+          echo "Run ID:      ${{ github.run_id }}"
+          echo ""
+          echo "Recent commits:"
+          git log --oneline -5
+          echo "::endgroup::"
+
+      # ------------------------------------------------------------------
+      # 3. Verify working directory
+      # ------------------------------------------------------------------
+      - name: Verify workspace
+        run: |
+          echo "::group::Workspace Check"
+          echo "pwd: $(pwd)"
+          echo "scraper version:"
+          head -5 scrapers/indeed.py | grep -i "import\|version\|modified" || true
+          git log -1 --format="Last modified: %ai | %s" -- scrapers/indeed.py
+          echo "requirements diff from default branch:"
+          diff <(git show HEAD~1:requirements.txt 2>/dev/null || echo "") requirements.txt 2>/dev/null && echo "(no changes)" || true
+          echo "::endgroup::"
+
+      # ------------------------------------------------------------------
+      # 4. Setup Python with caching
       # ------------------------------------------------------------------
       - name: Setup Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v5
@@ -62,7 +92,7 @@ jobs:
           cache-dependency-path: python/requirements.txt
 
       # ------------------------------------------------------------------
-      # 3. Install Python dependencies
+      # 5. Install Python dependencies
       # ------------------------------------------------------------------
       - name: Install dependencies
         run: |
@@ -70,7 +100,7 @@ jobs:
           pip install -r requirements.txt
 
       # ------------------------------------------------------------------
-      # 4. Install Playwright browsers (Chromium headless)
+      # 6. Install Playwright browsers (Chromium headless)
       # ------------------------------------------------------------------
       - name: Install Playwright Chromium
         run: |
@@ -78,7 +108,7 @@ jobs:
           playwright install-deps chromium
 
       # ------------------------------------------------------------------
-      # 5. Inject environment variables from GitHub Secrets
+      # 7. Inject environment variables from GitHub Secrets
       # ------------------------------------------------------------------
       - name: Create .env file
         run: |
@@ -90,15 +120,17 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
 
       # ------------------------------------------------------------------
-      # 6. Run the scraping pipeline
+      # 8. Run the scraping pipeline
       # ------------------------------------------------------------------
       - name: Run scraper pipeline
         id: scrape
         continue-on-error: false
         run: |
           echo "::group::Pipeline Execution"
+          echo "Commit:     $(git rev-parse HEAD)"
+          echo "Branch:     $(git rev-parse --abbrev-ref HEAD)"
           echo "Started at: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
-          echo "Python: $(python --version)"
+          echo "Python:     $(python --version)"
           echo ""
 
           # Capture both stdout and stderr, tee to log
@@ -161,6 +193,8 @@ jobs:
           echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| **Status** | ${{ job.status }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | $(git rev-parse --short HEAD) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Branch** | $(git rev-parse --abbrev-ref HEAD) |" >> $GITHUB_STEP_SUMMARY
           echo "| **Trigger** | ${{ github.event_name }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Date** | $(date -u '+%Y-%m-%d %H:%M UTC') |" >> $GITHUB_STEP_SUMMARY
           echo "| **Run ID** | ${{ github.run_id }} |" >> $GITHUB_STEP_SUMMARY

@@ -15,6 +15,12 @@ PROGRAMATHOR_BASE_URL = "https://programathor.com.br"
 PROGRAMATHOR_MAX_PAGES = 3
 PROGRAMATHOR_CONCURRENCY = 5
 
+REMOTIVE_API_URL = "https://remotive.com/api/remote-jobs"
+REMOTIVE_CATEGORIES = ["software-dev", "devops", "data", "artificial-intelligence"]
+REMOTIVE_MAX_JOBS = 50
+REMOTIVE_DELAY_MIN = 0.5
+REMOTIVE_DELAY_MAX = 1.5
+
 GREENHOUSE_BOARDS = [
     "vercel", "stripe", "airbnb", "datadog",
     "discord", "notion", "linear",

@@ -7,7 +7,6 @@ export function useAnalytics() {
     topCompanies: [],
     remoteStats: null,
     salaryBySeniority: [],
-    jobsOverTime: [],
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -35,7 +34,6 @@ export function useAnalytics() {
         topCompanies: companiesRes.data || [],
         remoteStats: remoteRes.data,
         salaryBySeniority: salaryRes.data || [],
-        jobsOverTime: [],
       })
     } catch (err) {
       setError(err.message)

@@ -29,7 +29,7 @@ export default function Register() {
   async function handleSubmit(e) {
     e.preventDefault()
     setSubmitting(true)
-    const { data, error } = await signUp(email, password)
+    const { data, error } = await signUp(email, password, name)
     if (!error && data?.user && !data?.session) {
       setConfirmed(true)
       notification.success(t('register.success'))
@@ -82,7 +82,7 @@ export default function Register() {
         className="flex items-center gap-1.5 text-xs text-slate-500 transition-colors hover:text-indigo-400"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
-        Voltar
+        {t('register.back')}
       </button>
 
       <form onSubmit={handleSubmit} className="space-y-4">

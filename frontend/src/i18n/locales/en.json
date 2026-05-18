@@ -136,6 +136,7 @@
   "login.submit": "Sign In",
   "login.submitting": "Signing in...",
   "login.divider": "Or continue with",
+  "login.back": "Back",
   "login.no_account": "Don't have an account?",
   "login.sign_up": "Sign up",
   "login.welcome_back": "Welcome back!",
@@ -157,6 +158,7 @@
   "register.sign_in": "Sign in",
   "register.confirmed_heading": "Check your email",
   "register.confirmed_description": "We sent a confirmation link to",
+  "register.back": "Back",
   "register.back_to_signin": "Back to sign in",
   "register.success": "Account created! Check your email.",
 

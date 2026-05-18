@@ -13,10 +13,11 @@ export function useJobs() {
   const [filters, setFilters] = useState({
     remote: null,
     seniority: null,
+    employment_type: null,
     source: null,
   })
 
-  const hasFilters = search || filters.remote !== null || filters.seniority || filters.source
+  const hasFilters = search || filters.remote !== null || filters.seniority || filters.employment_type || filters.source
 
   const fetchJobs = useCallback(async () => {
     setLoading(true)
@@ -43,6 +44,9 @@ export function useJobs() {
       }
       if (filters.source) {
         query = query.eq('source', filters.source)
+      }
+      if (filters.employment_type) {
+        query = query.eq('employment_type', filters.employment_type)
       }
 
       const { data, count: total, error: err } = await query
@@ -73,7 +77,7 @@ export function useJobs() {
   const clearFilters = useCallback(() => {
     setPage(1)
     setSearch('')
-    setFilters({ remote: null, seniority: null, source: null })
+    setFilters({ remote: null, seniority: null, employment_type: null, source: null })
   }, [])
 
   return {

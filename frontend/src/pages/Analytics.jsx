@@ -110,7 +110,7 @@ export default function Analytics() {
                   data={[
                     { name: t('analytics.remote'), value: remoteStats?.remote_jobs || 0 },
                     {
-                      name: 'On-site',
+                      name: t('analytics.onsite'),
                       value: (remoteStats?.total_jobs || 0) - (remoteStats?.remote_jobs || 0),
                     },
                   ]}

@@ -136,6 +136,7 @@
   "login.submit": "Entrar",
   "login.submitting": "Entrando...",
   "login.divider": "Ou continue com",
+  "login.back": "Voltar",
   "login.no_account": "Não tem uma conta?",
   "login.sign_up": "Cadastre-se",
   "login.welcome_back": "Bem-vindo de volta!",
@@ -157,6 +158,7 @@
   "register.sign_in": "Entrar",
   "register.confirmed_heading": "Verifique seu email",
   "register.confirmed_description": "Enviamos um link de confirmação para",
+  "register.back": "Voltar",
   "register.back_to_signin": "Voltar ao login",
   "register.success": "Conta criada! Verifique seu email.",
 

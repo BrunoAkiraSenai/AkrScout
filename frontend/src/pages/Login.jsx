@@ -57,7 +57,7 @@ export default function Login() {
         className="flex items-center gap-1.5 text-xs text-slate-500 transition-colors hover:text-indigo-400"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
-        Voltar
+        {t('login.back')}
       </button>
 
       <form onSubmit={handleSubmit} className="space-y-4">

@@ -32,12 +32,15 @@ export function AuthProvider({ children }) {
     return { data, error: err }
   }, [])
 
-  const signUp = useCallback(async (email, password) => {
+  const signUp = useCallback(async (email, password, name) => {
     setError(null)
     const { data, error: err } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        data: { full_name: name },
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
     })
     if (err) setError(err.message)
     return { data, error: err }

@@ -48,16 +48,16 @@
   <!-- Screenshots Row -->
   <table>
     <tr>
-      <td><img src="screenshots/dashboard.svg" alt="Dashboard" width="400"/></td>
-      <td><img src="screenshots/analytics.svg" alt="Analytics" width="400"/></td>
+      <td><img src="screenshots/dashboard.png" alt="Dashboard" width="400"/></td>
+      <td><img src="screenshots/Analytics.png" alt="Analytics" width="400"/></td>
     </tr>
     <tr>
       <td align="center"><em>Dashboard — visão geral do mercado em tempo real</em></td>
       <td align="center"><em>Analytics — skills, salários e tendências</em></td>
     </tr>
     <tr>
-      <td><img src="screenshots/jobs.svg" alt="Jobs" width="400"/></td>
-      <td><img src="screenshots/favorites.svg" alt="Favorites" width="400"/></td>
+      <td><img src="screenshots/jobs.png" alt="Jobs" width="400"/></td>
+      <td><img src="screenshots/Favorites.png" alt="Favorites" width="400"/></td>
     </tr>
     <tr>
       <td align="center"><em>Jobs — busca, filtros e scouting</em></td>
@@ -310,16 +310,16 @@ O scraper executa automaticamente todo dia às 06:00 UTC via GitHub Actions.
 
 <table>
   <tr>
-    <td><img src="screenshots/dashboard.svg" alt="Dashboard" width="400"/></td>
-    <td><img src="screenshots/analytics.svg" alt="Analytics" width="400"/></td>
+    <td><img src="screenshots/dashboard.png" alt="Dashboard" width="400"/></td>
+    <td><img src="screenshots/Analytics.png" alt="Analytics" width="400"/></td>
   </tr>
   <tr>
     <td align="center"><strong>Dashboard</strong> — Visão do mercado com stats, top skills, ranking de empresas</td>
     <td align="center"><strong>Analytics</strong> — Salário por senioridade, remoto vs presencial, tendências de skills</td>
   </tr>
   <tr>
-    <td><img src="screenshots/jobs.svg" alt="Jobs" width="400"/></td>
-    <td><img src="screenshots/favorites.svg" alt="Favorites" width="400"/></td>
+    <td><img src="screenshots/jobs.png" alt="Jobs" width="400"/></td>
+    <td><img src="screenshots/Favorites.png" alt="Favorites" width="400"/></td>
   </tr>
   <tr>
     <td align="center"><strong>Jobs</strong> — Busca, filtros por senioridade/remoto, paginação</td>

@@ -13,7 +13,6 @@ import {
   Shield,
   Layers,
   ChevronRight,
-  Star,
   Menu,
   X,
 } from 'lucide-react'
@@ -65,12 +64,6 @@ export default function Home() {
       title: t('home.feature_radar'),
       description: t('home.feature_radar_desc'),
     },
-  ]
-
-  const testimonials = [
-    { name: t('home.testimonial_1_name'), role: t('home.testimonial_1_role'), content: t('home.testimonial_1'), rating: 5 },
-    { name: t('home.testimonial_2_name'), role: t('home.testimonial_2_role'), content: t('home.testimonial_2'), rating: 5 },
-    { name: t('home.testimonial_3_name'), role: t('home.testimonial_3_role'), content: t('home.testimonial_3'), rating: 5 },
   ]
 
   useEffect(() => {
@@ -211,35 +204,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="border-t border-slate-800/40 py-20">
-        <div className="mx-auto max-w-7xl px-4 md:px-8">
-          <div className="mx-auto mb-12 max-w-2xl text-center">
-            <h2 className="text-2xl font-bold tracking-tight text-slate-100 md:text-3xl">
-              {t('home.testimonials_title')}
-            </h2>
-          </div>
-          <div className="grid gap-6 md:grid-cols-3">
-            {testimonials.map((item) => (
-              <div key={item.name} className="rounded-xl border border-slate-800/40 bg-slate-900/30 p-6">
-                <div className="mb-3 flex gap-0.5">
-                  {Array.from({ length: item.rating }).map((_, i) => (
-                    <Star key={i} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                  ))}
-                </div>
-                <p className="text-xs leading-relaxed text-slate-400">&ldquo;{item.content}&rdquo;</p>
-                <div className="mt-4 flex items-center gap-3 border-t border-slate-800/40 pt-4">
-                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-400 to-violet-600" />
-                  <div>
-                    <p className="text-xs font-medium text-slate-200">{item.name}</p>
-                    <p className="text-[10px] text-slate-500">{item.role}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+
 
       {/* CTA */}
       <section className="border-t border-slate-800/40 py-20">

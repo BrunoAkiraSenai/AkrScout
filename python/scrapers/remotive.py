@@ -1,14 +1,10 @@
 import asyncio
-import random
 from typing import Any, Dict, List, Optional
 
 import httpx
 
 from config.settings import (
     REMOTIVE_API_URL,
-    REMOTIVE_CATEGORIES,
-    REMOTIVE_DELAY_MAX,
-    REMOTIVE_DELAY_MIN,
     REMOTIVE_MAX_JOBS,
     REQUEST_TIMEOUT,
 )
@@ -40,9 +36,6 @@ class RemotiveScraper(BaseScraper):
     def source_name(self) -> str:
         return "remotive"
 
-    def _random_delay(self) -> float:
-        return random.uniform(REMOTIVE_DELAY_MIN, REMOTIVE_DELAY_MAX)
-
     def _is_relevant_role(self, title: str) -> bool:
         t = title.lower()
         keywords = [
@@ -69,28 +62,24 @@ class RemotiveScraper(BaseScraper):
     async def fetch_raw(self) -> List[Dict[str, Any]]:
         self._collected = []
         seen_urls: set = set()
-        logger.info("Remotive scraping started (%d categories)", len(REMOTIVE_CATEGORIES))
+        logger.info("Remotive scraping started...")
 
         async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT / 1000) as client:
-            for category in REMOTIVE_CATEGORIES:
-                if len(self._collected) >= REMOTIVE_MAX_JOBS:
-                    break
+            url = f"{REMOTIVE_API_URL}?limit=100"
+            logger.info("Fetching all jobs...")
 
-                url = f"{REMOTIVE_API_URL}?limit=100&category={category}"
-                logger.info("Fetching category: %s", category)
+            try:
+                resp = await client.get(url, headers=HEADERS)
+                resp.raise_for_status()
+                data = resp.json()
+            except Exception as e:
+                logger.warning("Failed to fetch Remotive: %s", e)
+                return self._collected
 
-                try:
-                    resp = await client.get(url, headers=HEADERS)
-                    resp.raise_for_status()
-                    data = resp.json()
-                except Exception as e:
-                    logger.warning("Failed to fetch category '%s': %s", category, e)
-                    continue
+            jobs = data.get("jobs", [])
+            logger.info("Received %d total jobs", len(jobs))
 
-                jobs = data.get("jobs", [])
-                logger.info("Category '%s': %d jobs", category, len(jobs))
-
-                for j in jobs:
+            for j in jobs:
                     if len(self._collected) >= REMOTIVE_MAX_JOBS:
                         break
 
@@ -146,8 +135,6 @@ class RemotiveScraper(BaseScraper):
                         "tags": tags,
                         "job_type": j.get("job_type"),
                     })
-
-                await asyncio.sleep(self._random_delay())
 
         logger.info("Remotive collected %d raw entries", len(self._collected))
         return self._collected

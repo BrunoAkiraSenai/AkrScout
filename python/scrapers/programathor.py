@@ -108,6 +108,9 @@ class ProgramathorScraper(BaseScraper):
                     else:
                         company = raw[:60].strip()
 
+            if company:
+                company = re.sub(r'\s*\(.*?(?:Ltda|SA|S/A|LLC|Inc|Corp|Group|Consulting|Tecnologia|Serviços).*?\)\s*$', '', company, flags=re.IGNORECASE).strip()
+
             if not location:
                 loc_match = _re.search(r'(Remoto|Presencial|Híbrido|Hibrido)\s*[-–—]?\s*([A-Za-zÀ-ü\s]+)', a.get_text(strip=True))
                 if loc_match:
@@ -115,7 +118,15 @@ class ProgramathorScraper(BaseScraper):
 
             remote = "remoto" in location.lower() or "remoto" in title.lower()
 
+            desc_snippet = ""
+            p_tag = a.find("p")
+            if p_tag:
+                t = p_tag.get_text(strip=True)
+                if len(t) > 20:
+                    desc_snippet = t[:500]
+
             page_jobs.append({
+                "description": desc_snippet,
                 "title": title,
                 "company": company,
                 "location": location,

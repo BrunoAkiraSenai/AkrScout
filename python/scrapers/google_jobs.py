@@ -474,83 +474,174 @@ class GoogleJobsScraper(BaseScraper):
                 await page.screenshot(path=str(debug_dir / f"04_after_scroll_{safe_query}.png"))
 
                 logger.info("PW: extracting job data from DOM...")
+
+                ui_keywords = ["compartilhar", "facebook", "copiar link", "ferramentas",
+                               "anúncio", "anuncio", "seguir", "vagas salvas", "empregos",
+                               "clique para copiar", "twitter", "linkedin", "whatsapp",
+                               "denunciar", "reportar", "candidatar", "candidate-se"]
+
                 cards = await page.evaluate("""
                     () => {
+                        const BAD = ["compartilhar","facebook","copiar link","ferramentas",
+                                     "anúncio","anuncio","seguir","vagas salvas","empregos",
+                                     "clique","twitter","linkedin","whatsapp","denunciar",
+                                     "reportar","candidatar","candidate","salvar"];
+
+                        const isBadTitle = (t) => {
+                            const l = (t || '').toLowerCase().trim();
+                            if (!l || l.length < 4) return true;
+                            return BAD.some(k => l.includes(k));
+                        };
+
+                        // Find containers with repeated card-like children
+                        const containers = [];
+                        const candidates = new Set();
+                        const allDivs = document.querySelectorAll('div, ul, ol');
+
+                        for (const el of allDivs) {
+                            const children = Array.from(el.children).filter(c => c.tagName === 'DIV' || c.tagName === 'LI');
+                            if (children.length >= 3 && children.length <= 100) {
+                                // Check if children have similar structure (at least have an <a> or heading)
+                                const withLink = children.filter(c => c.querySelector('a'));
+                                if (withLink.length >= 2) {
+                                    containers.push({
+                                        el: el,
+                                        children: children,
+                                        withLink: withLink.length,
+                                        total: children.length,
+                                    });
+                                }
+                            }
+                        }
+
+                        // Pick the container with the most linked children (likely the job card list)
+                        containers.sort((a, b) => b.withLink - a.withLink);
+
                         const results = [];
                         const seen = new Set();
 
-                        const extractors = [
-                            () => {
-                                const cards = document.querySelectorAll('a[href*="viewjob"], a[href*="/jobs/"], a[href*="job?"]');
-                                return Array.from(cards).map(a => {
-                                    const title = (a.innerText || a.textContent || '').trim();
-                                    if (!title || title.length < 5 || seen.has(title)) return null;
+                        for (const c of containers.slice(0, 3)) {
+                            for (const card of c.children) {
+                                try {
+                                    const titleEl = card.querySelector('h3, h2, [class*="title"], a[href*="http"]');
+                                    if (!titleEl) continue;
+                                    const title = (titleEl.innerText || titleEl.textContent || '').trim();
+                                    if (isBadTitle(title) || seen.has(title)) continue;
                                     seen.add(title);
-                                    const parent = a.closest('div,li') || a.parentElement;
-                                    const allText = parent ? parent.innerText : title;
-                                    const lines = allText.split('\\n').map(l => l.trim()).filter(l => l);
-                                    const company = lines.find(l => l !== title && l.length > 1 && l.length < 60) || '';
-                                    const location = lines.find(l => l !== title && l !== company && l.length > 1 && l.length < 80) || '';
-                                    return { title, company, location, salaryText: '', dateText: '', url: a.href || '' };
-                                }).filter(x => x !== null);
-                            },
-                            () => {
-                                const candidates = document.querySelectorAll('[data-docid], [jscontroller], [class*="job"], [class*="result"]');
-                                return Array.from(candidates).map(el => {
-                                    const texts = [];
-                                    const walk = (node) => {
-                                        if (node.nodeType === 3) {
-                                            const t = (node.textContent || '').trim();
-                                            if (t) texts.push(t);
-                                        } else if (node.nodeType === 1) {
-                                            const tag = node.tagName.toLowerCase();
-                                            if (!['script','style','noscript'].includes(tag)) {
-                                                for (let child of node.childNodes) walk(child);
-                                            }
-                                        }
-                                    };
-                                    walk(el);
-                                    const title = texts[0] || '';
-                                    if (!title || title.length < 5 || seen.has(title)) return null;
-                                    seen.add(title);
-                                    const company = texts.find(t => t !== title && t.length > 1 && t.length < 60) || '';
-                                    const link = el.querySelector('a');
-                                    const url = link ? link.href : '';
-                                    return { title, company, location: '', salaryText: '', dateText: '', url };
-                                }).filter(x => x !== null);
-                            },
-                            () => {
-                                const links = document.querySelectorAll('a');
-                                const jobLinks = Array.from(links).filter(a => {
-                                    const h = a.href || '';
-                                    return h.includes('/jobs') || h.includes('viewjob') || h.includes('job?');
-                                });
-                                return Array.from(jobLinks).map(a => {
-                                    const title = (a.innerText || a.textContent || '').trim();
-                                    if (!title || title.length < 5 || seen.has(title)) return null;
-                                    seen.add(title);
-                                    return { title, company: '', location: '', salaryText: '', dateText: '', url: a.href || '' };
-                                }).filter(x => x !== null);
-                            },
-                        ];
 
-                        for (const extract of extractors) {
-                            try {
-                                const extracted = extract();
-                                if (extracted.length > 0) {
-                                    results.push(...extracted);
-                                    break;
-                                }
-                            } catch(e) {}
+                                    const link = card.querySelector('a[href*="http"]');
+                                    const url = link ? link.href : '';
+
+                                    const allText = card.innerText || '';
+                                    const lines = allText.split('\\n').map(l => l.trim()).filter(l => l && l !== title);
+                                    let company = '';
+                                    let location = '';
+                                    for (const line of lines) {
+                                        if (!company && line.length > 1 && line.length < 60) company = line;
+                                        else if (!location && line.length > 1 && line.length < 80) location = line;
+                                    }
+
+                                    results.push({ title, company, location, salaryText: '', dateText: '', url });
+                                    if (results.length >= 50) break;
+                                } catch(e) {}
+                            }
+                            if (results.length > 0) break;
                         }
                         return results;
                     }
                 """)
-                logger.info("PW: page.evaluate extracted %d cards", len(cards))
 
+                if not cards:
+                    logger.info("PW: container-based extraction found 0, trying structured data...")
+                    cards = await page.evaluate("""
+                        () => {
+                            const results = [];
+                            const seen = new Set();
+                            const BAD = ["compartilhar","facebook","copiar link","ferramentas","anúncio","anuncio"];
+
+                            // Try to find Google Jobs data in script tags
+                            const scripts = document.querySelectorAll('script:not([src])');
+                            for (const s of scripts) {
+                                const text = s.textContent || '';
+                                if (!text.includes('jobTitle') && !text.includes('"title"')) continue;
+                                try {
+                                    const idx = text.indexOf('[');
+                                    if (idx === -1) continue;
+                                    const sliced = text.slice(idx, idx + 50000);
+                                    const end = sliced.lastIndexOf(']');
+                                    if (end === -1) continue;
+                                    const raw = sliced.slice(0, end + 1);
+                                    const arr = JSON.parse(raw);
+                                    if (!Array.isArray(arr)) continue;
+                                    for (const item of arr) {
+                                        if (!item || typeof item !== 'object') continue;
+                                        const title = (item.jobTitle || item.title || item.name || '').trim();
+                                        if (!title || title.length < 4 || seen.has(title)) continue;
+                                        if (BAD.some(b => title.toLowerCase().includes(b))) continue;
+                                        seen.add(title);
+                                        const company = (item.company || item.employer || item.hiringOrganization || {}).name
+                                                        || item.company || '';
+                                        const loc = (item.location || item.jobLocation || '').name
+                                                    || item.location || item.city || '';
+                                        const url = item.url || item.link || item.jobUrl || '';
+                                        results.push({ title, company, location: loc, salaryText: '', dateText: '', url });
+                                    }
+                                } catch(e) {}
+                            }
+                            return results;
+                        }
+                    """)
+                    if cards:
+                        logger.info("PW: structured data extraction found %d jobs", len(cards))
+
+                if not cards:
+                    logger.info("PW: structured data found 0, trying focused link extraction...")
+                    cards = await page.evaluate("""
+                        () => {
+                            const results = [];
+                            const seen = new Set();
+                            const BAD = ["compartilhar","facebook","copiar link","ferramentas","anúncio"];
+
+                            // Find job-related links only
+                            const allLinks = document.querySelectorAll('a[href*="/jobs"], a[href*="viewjob"], a[href*="job?"], a[href*="career"], a[href*="vaga"]');
+                            for (const a of allLinks) {
+                                const title = (a.innerText || a.textContent || '').trim();
+                                if (!title || title.length < 5 || seen.has(title)) continue;
+                                if (BAD.some(b => title.toLowerCase().includes(b))) continue;
+                                seen.add(title);
+
+                                const card = a.closest('div, li, article') || a.parentElement;
+                                const allText = card ? card.innerText : title;
+                                const lines = allText.split('\\n').map(l => l.trim()).filter(l => l && l !== title);
+                                const company = lines.find(l => l.length > 1 && l.length < 60) || '';
+                                const location = lines.find(l => l !== company && l.length > 1 && l.length < 80) || '';
+
+                                results.push({ title, company, location, salaryText: '', dateText: '', url: a.href || '' });
+                            }
+                            return results;
+                        }
+                    """)
+                    if cards:
+                        logger.info("PW: link extraction found %d jobs", len(cards))
+
+                logger.info("PW: total extracted %d cards", len(cards))
+
+                # Filter out UI elements
+                filtered = []
                 for card in cards:
-                    card["remote"] = any(w in card.get("title", "").lower()
-                                        for w in ["remoto", "remote", "home office", "home-office"])
+                    title_lower = card.get("title", "").lower()
+                    if any(kw in title_lower for kw in ui_keywords):
+                        logger.debug("PW: filtered UI element: '%s'", card.get("title"))
+                        continue
+                    if len(card.get("title", "")) < 4:
+                        continue
+                    if not card.get("url") and not card.get("company"):
+                        continue
+                    card["remote"] = any(w in title_lower for w in ["remoto", "remote", "home office", "home-office"])
+                    filtered.append(card)
+                cards = filtered
+
+                logger.info("PW: %d valid cards after UI filter", len(cards))
 
                 await page.screenshot(path=str(debug_dir / f"05_final_{safe_query}.png"))
 
@@ -558,6 +649,10 @@ class GoogleJobsScraper(BaseScraper):
                     body_text = await page.evaluate("document.body.innerText.substring(0, 4000)")
                     logger.info("PW: page body preview (first 600 chars): %s",
                                 body_text[:600].replace('\\n', ' ').replace('\\u00a0', ' '))
+                else:
+                    for c in cards[:5]:
+                        logger.info("PW: sample card: '%s' @ %s [%s] url=%s",
+                                    c["title"], c["company"], c["location"], c["url"][:80])
 
                 return cards
             finally:

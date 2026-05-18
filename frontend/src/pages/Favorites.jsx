@@ -85,9 +85,10 @@ const MemoFavoriteCard = memo(function FavoriteCard({ job, index, onToggle }) {
               href={job.job_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-lg p-2 text-slate-600 transition-colors hover:bg-slate-800/50 hover:text-slate-300"
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-400 transition-colors hover:bg-slate-800/50 hover:text-indigo-400"
             >
-              <ExternalLink className="h-4 w-4" />
+              <ExternalLink className="h-3.5 w-3.5" />
+              {t('job.open_external')}
             </a>
           )}
         </div>

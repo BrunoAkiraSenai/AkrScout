@@ -186,6 +186,7 @@
   "job.internship": "Internship",
   "job.temporary": "Temporary",
   "job.from_salary": "From ${{amount}}",
+  "job.open_external": "View Job",
 
   "error.title": "Something went wrong",
   "error.try_again": "Try again",

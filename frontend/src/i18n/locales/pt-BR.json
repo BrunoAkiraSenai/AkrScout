@@ -186,6 +186,7 @@
   "job.internship": "Estágio",
   "job.temporary": "Temporário",
   "job.from_salary": "A partir de ${{amount}}",
+  "job.open_external": "Ver Vaga",
 
   "error.title": "Algo deu errado",
   "error.try_again": "Tentar novamente",

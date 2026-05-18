@@ -147,62 +147,60 @@ class IndeedScraper(BaseScraper):
 
             logger.info("Searching Indeed for: %s", query)
 
-            for page_num in range(INDEED_MAX_PAGES):
-                if len(self._collected) >= INDEED_MAX_JOBS:
-                    break
+            cards = []
 
-                page = await context.new_page()
-                try:
-                    params = {"q": query, "limit": 50, "sort": "date"}
-                    if page_num > 0:
-                        params["start"] = page_num * 50
+            # Strategy 1: curl_cffi JSON API (fastest, no browser)
+            if not cards:
+                cards = await self._search_api(query)
 
-                    url = f"{INDEED_SEARCH_URL}?{urlencode(params)}"
-                    logger.debug("Fetching: %s", url)
+            # Strategy 2: curl_cffi RSS feed
+            if not cards:
+                cards = await self._search_rss(query)
 
-                    await page.goto(url, wait_until="domcontentloaded", timeout=REQUEST_TIMEOUT)
-                    await page.wait_for_load_state("load", timeout=REQUEST_TIMEOUT)
-                    await asyncio.sleep(self._random_delay(4, 6))
+            # Strategy 3: Playwright with stealth (browser-based)
+            if not cards:
+                logger.info("API/RSS failed, trying Playwright browser for '%s'", query)
+                for page_num in range(INDEED_MAX_PAGES):
+                    if len(self._collected) >= INDEED_MAX_JOBS:
+                        break
 
-                    await self._dismiss_cookies(page)
+                    page = await context.new_page()
+                    try:
+                        params = {"q": query, "limit": 50, "sort": "date"}
+                        if page_num > 0:
+                            params["start"] = page_num * 50
 
-                    await asyncio.sleep(2)
+                        url = f"{INDEED_SEARCH_URL}?{urlencode(params)}"
+                        logger.debug("Fetching: %s", url)
 
-                    final_url = page.url
-                    page_title = await page.title()
-                    logger.debug("Indeed page title: %s", page_title)
-                    logger.debug("Indeed final URL: %s", final_url)
+                        await page.goto(url, wait_until="domcontentloaded", timeout=REQUEST_TIMEOUT)
+                        await page.wait_for_load_state("load", timeout=REQUEST_TIMEOUT)
 
-                    for _ in range(3):
-                        await page.evaluate("window.scrollBy(0, 600)")
+                        await self._dismiss_cookies(page)
+                        await asyncio.sleep(2)
+
+                        for _ in range(3):
+                            await page.evaluate("window.scrollBy(0, 600)")
+                            await asyncio.sleep(self._random_delay(1, 2))
+
                         await asyncio.sleep(self._random_delay(1, 2))
 
-                    await asyncio.sleep(self._random_delay(1, 2))
+                        pw_cards = await self._extract_search_cards(page)
+                        cards.extend(pw_cards)
+                        logger.info("Playwright found %d cards on page %d for '%s'", len(pw_cards), page_num + 1, query)
+                    except Exception as e:
+                        logger.warning("Playwright page %d failed for '%s': %s", page_num + 1, query, e)
+                    finally:
+                        await page.close()
 
-                    cards = await self._extract_search_cards(page)
-                    blocked = await self._is_cloudflare_blocked(page)
-                    logger.info("Found %d job cards on page %d for '%s'", len(cards), page_num + 1, query)
+                    if page_num < INDEED_MAX_PAGES - 1:
+                        await asyncio.sleep(self._random_delay(INDEED_PAGE_DELAY_MIN, INDEED_PAGE_DELAY_MAX))
 
-                    if not cards and blocked and page_num == 0:
-                        logger.info("Cloudflare blocked Playwright, trying RSS fallback for '%s'", query)
-                        rss_cards = await self._search_rss(query)
-                        if rss_cards:
-                            cards = rss_cards
-                            logger.info("RSS fallback found %d jobs for '%s'", len(cards), query)
-
-                    for card in cards:
-                        if len(self._collected) >= INDEED_MAX_JOBS:
-                            break
-                        await self._enrich_job(context, card)
-                        await asyncio.sleep(self._random_delay())
-
-                except Exception as e:
-                    logger.warning("Search page %d failed for '%s': %s", page_num + 1, query, e)
-                finally:
-                    await page.close()
-
-                if page_num < INDEED_MAX_PAGES - 1:
-                    await asyncio.sleep(self._random_delay(INDEED_PAGE_DELAY_MIN, INDEED_PAGE_DELAY_MAX))
+            for card in cards:
+                if len(self._collected) >= INDEED_MAX_JOBS:
+                    break
+                await self._enrich_job(context, card)
+                await asyncio.sleep(self._random_delay())
 
     async def _extract_search_cards(self, page: Page) -> List[Dict[str, Any]]:
         cards = []
@@ -342,87 +340,134 @@ class IndeedScraper(BaseScraper):
 
         return cards
 
-    async def _is_cloudflare_blocked(self, page: Page) -> bool:
+    async def _request_impersonate(self, url: str, accept: str = "text/html") -> Optional[str]:
         try:
-            text = await page.evaluate("document.body.innerText.substring(0, 500)")
-            lower = text.lower()
-            keywords = ["cloudflare", "ray id", "verificação adicional", "please confirm you are human",
-                        "checking your browser", "cf-ray", "attention required"]
-            return any(kw in lower for kw in keywords)
-        except Exception:
-            return False
+            from curl_cffi.requests import AsyncSession
+            async with AsyncSession(impersonate="chrome120") as session:
+                resp = await session.get(url, timeout=30, headers={"Accept": accept})
+                if resp.status_code == 200 and not self._is_cloudflare_body(resp.text[:500]):
+                    return resp.text
+                logger.debug("Impersonated request blocked (status=%d): %s", resp.status_code, url[:80])
+                return None
+        except Exception as e:
+            logger.debug("Impersonated request failed: %s", e)
+            return None
+
+    def _is_cloudflare_body(self, text: str) -> bool:
+        lower = text.lower()
+        keywords = ["cloudflare", "ray id", "verificação adicional", "checking your browser",
+                    "cf-ray", "attention required", "please confirm you are human"]
+        return any(kw in lower for kw in keywords)
+
+    async def _search_api(self, query: str) -> List[Dict[str, Any]]:
+        import json
+
+        params = {"q": query, "l": "", "start": "0", "limit": "50", "sort": "date"}
+        url = f"https://br.indeed.com/jobs/api/v1/search?{urlencode(params)}"
+        logger.debug("Indeed API URL: %s", url)
+
+        html = await self._request_impersonate(url, accept="application/json")
+        if not html:
+            return []
+
+        try:
+            data = json.loads(html)
+        except json.JSONDecodeError:
+            return []
+
+        results = data.get("results", data.get("jobs", data.get("jobData", [])))
+        if not results and isinstance(data, list):
+            results = data
+
+        cards = []
+        for job in results:
+            try:
+                jk = job.get("jobKey") or job.get("jk")
+                if not jk:
+                    continue
+                title = (job.get("jobTitle") or job.get("title") or "").strip()
+                if not title:
+                    continue
+                cards.append({
+                    "jk": jk,
+                    "title": title,
+                    "company": (job.get("company") or job.get("employer") or {}).get("name") if isinstance(job.get("company"), dict) else (job.get("company") or ""),
+                    "location": (job.get("city") or "") + (", " + job.get("state") if job.get("state") else ""),
+                    "url": f"https://br.indeed.com/viewjob?jk={jk}",
+                    "salary_text": job.get("salary", {}).get("text") if isinstance(job.get("salary"), dict) else job.get("salaryText", ""),
+                    "posted_at": job.get("formattedRelativeTime") or job.get("postedDate", ""),
+                })
+                cards_company = job.get("company") or ""
+                if isinstance(job.get("company"), dict):
+                    cards_company = job["company"].get("name", "")
+                cards[-1]["company"] = cards_company
+            except Exception:
+                continue
+
+        logger.info("API search found %d jobs for '%s'", len(cards), query)
+        return cards
 
     async def _search_rss(self, query: str) -> List[Dict[str, Any]]:
-        import cloudscraper
         import xml.etree.ElementTree as ET
 
         url = f"https://br.indeed.com/rss?q={query.replace(' ', '+')}"
         logger.debug("RSS fallback URL: %s", url)
 
+        html = await self._request_impersonate(url, accept="application/rss+xml, application/xml, text/xml, */*")
+        if not html:
+            return []
+
         try:
-            scraper = cloudscraper.create_scraper()
-            resp = scraper.get(url, timeout=30, headers={
-                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                "Accept": "application/rss+xml, application/xml, text/xml, */*",
-            })
-            resp.raise_for_status()
+            root = ET.fromstring(html.encode())
+        except ET.ParseError:
+            return []
 
-            content_type = resp.headers.get("content-type", "")
-            if "xml" not in content_type and "html" in content_type.lower():
-                if "cloudflare" in resp.text[:500].lower() or "verificação" in resp.text[:500].lower():
-                    logger.warning("RSS feed also blocked by Cloudflare")
-                    return []
+        cards = []
+        for item in root.iter("item"):
+            try:
+                title_el = item.find("title")
+                link_el = item.find("link")
+                desc_el = item.find("description")
 
-            root = ET.fromstring(resp.content)
-            cards = []
-            for item in root.iter("item"):
-                try:
-                    title_el = item.find("title")
-                    link_el = item.find("link")
-                    desc_el = item.find("description")
+                title = title_el.text.strip() if title_el is not None and title_el.text else ""
+                link = link_el.text.strip() if link_el is not None and link_el.text else ""
 
-                    title = title_el.text.strip() if title_el is not None and title_el.text else ""
-                    link = link_el.text.strip() if link_el is not None and link_el.text else ""
-                    desc = desc_el.text.strip() if desc_el is not None and desc_el.text else ""
-
-                    if not title or not link:
-                        continue
-
-                    jk_match = re.search(r'jk=([a-fA-F0-9]+)', link)
-                    if not jk_match:
-                        continue
-                    jk = jk_match.group(1)
-
-                    company = ""
-                    location = ""
-                    if desc:
-                        lines = desc.replace("<br>", "\n").replace("<br/>", "\n").replace("</p>", "\n")
-                        lines = re.sub(r'<[^>]+>', '', lines)
-                        for line in lines.split("\n"):
-                            line = line.strip()
-                            if not line:
-                                continue
-                            if not company:
-                                company = line
-                            elif not location:
-                                location = line
-                                break
-
-                    cards.append({
-                        "jk": jk,
-                        "title": title,
-                        "company": company,
-                        "location": location,
-                        "url": f"https://br.indeed.com/viewjob?jk={jk}",
-                        "description": desc,
-                    })
-                except Exception as e:
+                if not title or not link:
                     continue
 
-            return cards
-        except Exception as e:
-            logger.warning("RSS fallback failed: %s", e)
-            return []
+                jk_match = re.search(r'jk=([a-fA-F0-9]+)', link)
+                if not jk_match:
+                    continue
+                jk = jk_match.group(1)
+
+                desc = desc_el.text.strip() if desc_el is not None and desc_el.text else ""
+                company = ""
+                location = ""
+                if desc:
+                    clean = re.sub(r'<[^>]+>', '', desc.replace("<br>", "\n").replace("<br/>", "\n"))
+                    for line in clean.split("\n"):
+                        line = line.strip()
+                        if not line:
+                            continue
+                        if not company:
+                            company = line
+                        elif not location:
+                            location = line
+                            break
+
+                cards.append({
+                    "jk": jk,
+                    "title": title,
+                    "company": company,
+                    "location": location,
+                    "url": f"https://br.indeed.com/viewjob?jk={jk}",
+                    "description": desc,
+                })
+            except Exception:
+                continue
+
+        logger.info("RSS search found %d jobs for '%s'", len(cards), query)
+        return cards
 
     async def _enrich_job(self, context: BrowserContext, card: Dict[str, Any]) -> None:
         detail_page = await context.new_page()

@@ -34,38 +34,13 @@
   <a href="https://python.org">
     <img src="https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python" alt="Python 3.12"/>
   </a>
-  <a href="https://playwright.dev">
-    <img src="https://img.shields.io/badge/Playwright-Chromium-45ba4b?style=flat-square&logo=playwright" alt="Playwright"/>
-  </a>
+
   <a href="https://vercel.com">
     <img src="https://img.shields.io/badge/deploy-Vercel-000000?style=flat-square&logo=vercel" alt="Vercel"/>
   </a>
   <a href="https://github.com/features/actions">
     <img src="https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?style=flat-square&logo=githubactions" alt="GitHub Actions"/>
   </a>
-
-  <br/>
-  <br/>
-
-  <!-- Screenshots Row -->
-  <table>
-    <tr>
-      <td><img src="screenshots/dashboard.svg" alt="Dashboard" width="400"/></td>
-      <td><img src="screenshots/analytics.svg" alt="Analytics" width="400"/></td>
-    </tr>
-    <tr>
-      <td align="center"><em>Dashboard — visão geral do mercado em tempo real</em></td>
-      <td align="center"><em>Analytics — skills, salários e tendências</em></td>
-    </tr>
-    <tr>
-      <td><img src="screenshots/jobs.svg" alt="Jobs" width="400"/></td>
-      <td><img src="screenshots/favorites.svg" alt="Favorites" width="400"/></td>
-    </tr>
-    <tr>
-      <td align="center"><em>Jobs — busca, filtros e scouting</em></td>
-      <td align="center"><em>Favorites — salve e acompanhe vagas</em></td>
-    </tr>
-  </table>
 
   <br/>
   <sub><strong>Desenvolvido por <a href="https://github.com/anomalyco">Bruno Akira Furumori</a></strong></sub>
@@ -98,7 +73,7 @@ A plataforma coleta vagas de tech diariamente, normaliza os anúncios, extrai sk
   <tr>
     <td width="50%">
       <h3>🤖 Scraping Automatizado</h3>
-      <p>Pipeline diário com Playwright + BeautifulSoup. Deduplicação via content hashing. Extração estruturada com parsing de skills.</p>
+      <p>Pipeline diário com httpx + BeautifulSoup. Deduplicação via content hash. Extração estruturada com parsing de skills.</p>
     </td>
     <td width="50%">
       <h3>📊 Analytics em Tempo Real</h3>
@@ -128,7 +103,7 @@ A plataforma coleta vagas de tech diariamente, normaliza os anúncios, extrai sk
   <tr>
     <td width="50%">
       <h3>🔄 Pipeline CI/CD</h3>
-      <p>GitHub Actions executa o scraper diariamente. Instalação automatizada de dependências, setup do Playwright e arquivamento de logs.</p>
+      <p>GitHub Actions executa o scraper diariamente. Instalação automatizada de dependências e arquivamento de logs.</p>
     </td>
     <td width="50%">
       <h3>🛡️ Segurança RLS</h3>
@@ -294,11 +269,10 @@ O scraper executa automaticamente todo dia às 06:00 UTC via GitHub Actions.
 │  1. Checkout do repositório              │
 │  2. Setup Python 3.12 (cache)            │
 │  3. Instalar dependências                │
-│  4. Instalar Playwright Chromium         │
-│  5. Injetar secrets do Supabase          │
-│  6. Executar python main.py              │
-│  7. Upload de logs como artifact         │
-│  8. Postar sumário na página de execução │
+│  4. Injetar secrets do Supabase          │
+│  5. Executar python main.py              │
+│  6. Upload de logs como artifact         │
+│  7. Postar sumário na página de execução │
 └──────────────────────────────────────────┘
 ```
 
@@ -309,39 +283,6 @@ O scraper executa automaticamente todo dia às 06:00 UTC via GitHub Actions.
 
 ---
 
-## Screenshots
-
-<table>
-  <tr>
-    <td><img src="screenshots/dashboard.svg" alt="Dashboard" width="400"/></td>
-    <td><img src="screenshots/analytics.svg" alt="Analytics" width="400"/></td>
-  </tr>
-  <tr>
-    <td align="center"><strong>Dashboard</strong> — Visão do mercado com stats, top skills, ranking de empresas</td>
-    <td align="center"><strong>Analytics</strong> — Salário por senioridade, remoto vs presencial, tendências de skills</td>
-  </tr>
-  <tr>
-    <td><img src="screenshots/jobs.svg" alt="Jobs" width="400"/></td>
-    <td><img src="screenshots/favorites.svg" alt="Favorites" width="400"/></td>
-  </tr>
-  <tr>
-    <td align="center"><strong>Jobs</strong> — Busca, filtros por senioridade/remoto, paginação</td>
-    <td align="center"><strong>Favorites</strong> — Vagas salvas com acesso rápido</td>
-  </tr>
-  <tr>
-    <td><img src="screenshots/login.svg" alt="Login" width="400"/></td>
-    <td><img src="screenshots/mobile.svg" alt="Mobile" width="400"/></td>
-  </tr>
-  <tr>
-    <td align="center"><strong>Autenticação</strong> — Supabase Auth com email/senha</td>
-    <td align="center"><strong>Mobile</strong> — Design responsivo com sidebar recolhível</td>
-  </tr>
-</table>
-
-> Screenshots serão adicionadas conforme o projeto evolui. Arquivos placeholder estão no diretório `screenshots/`.
-
----
-
 ## Começando
 
 ### Pré-requisitos
@@ -349,7 +290,6 @@ O scraper executa automaticamente todo dia às 06:00 UTC via GitHub Actions.
 - Node.js 20+
 - Python 3.12+
 - Um projeto Supabase (plano gratuito funciona)
-- Suporte a Playwright browser
 
 ### Setup Frontend
 
@@ -529,6 +469,12 @@ A camada de views (`vw_*`) abstrai joins complexos para que o frontend consulte 
 - [ ] **Notificações por email** — Digest diário de novas vagas
 - [ ] **Scraping multi-fonte** — LinkedIn, Indeed, Wellfound, etc.
 - [ ] **Extensão Chrome** — Salve vagas de qualquer site com um clique
+
+---
+
+## Nota sobre o Desenvolvimento
+
+Utilizei IA como apoio de produtividade e aceleração no desenvolvimento, focando principalmente em arquitetura, integração e refinamento da solução.
 
 ---
 

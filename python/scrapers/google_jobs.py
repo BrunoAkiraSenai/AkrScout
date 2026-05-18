@@ -46,52 +46,10 @@ class GoogleJobsScraper(BaseScraper):
         return random.uniform(min_s or GOOGLE_JOBS_DELAY_MIN, max_s or GOOGLE_JOBS_DELAY_MAX)
 
     async def _search_query(self, query: str) -> List[Dict[str, Any]]:
-        params = {
-            "q": f"{query} brasil vaga",
-            "ibp": "htl;jobs",
-            "gl": GOOGLE_JOBS_COUNTRY,
-            "hl": GOOGLE_JOBS_LANG,
-        }
-        url = f"https://www.google.com/search?{urlencode(params)}"
-        logger.info("Google Jobs URL: %s", url)
-
-        headers = {
-            "User-Agent": random.choice(USER_AGENTS),
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": f"{GOOGLE_JOBS_LANG},{GOOGLE_JOBS_COUNTRY.lower()};q=0.9,en;q=0.8",
-            "Cache-Control": "no-cache",
-        }
-
-        try:
-            async with AsyncSession(impersonate="chrome124") as session:
-                resp = await session.get(url, timeout=30, headers=headers)
-                logger.debug("Google response status=%d size=%d for '%s'", resp.status_code, len(resp.text), query)
-
-                if resp.status_code != 200:
-                    logger.warning("Google returned status %d for '%s'", resp.status_code, query)
-                    return []
-
-                text = resp.text
-                preview = text[:3000].replace('\n', ' ')[:600]
-                logger.info("Google HTML preview: %s", preview)
-
-                lower = text.lower()
-                if "captcha" in lower or "unusual traffic" in lower:
-                    logger.warning("Google CAPTCHA/blocking detected for '%s'", query)
-                    return []
-                if "before you continue" in lower or "consent" in lower or "cookies" in lower:
-                    logger.warning("Google cookie consent page for '%s'", query)
-                    return []
-                if "enable javascript" in lower or "javascript" in lower:
-                    logger.warning("Google requires JavaScript for '%s'", query)
-
-                json_ld_count = len(text.split('"application/ld+json"'))
-                logger.debug("JSON-LD script tags found: %d", json_ld_count - 1)
-
-                return self._parse_results(text, query)
-        except Exception as e:
-            logger.warning("Google Jobs request failed for '%s': %s", query, e)
-            return []
+        # Google Jobs is JavaScript-rendered — curl_cffi cannot extract job data.
+        # Return empty to trigger the Playwright fallback immediately.
+        logger.debug("Skipping curl_cffi for '%s' (JS-rendered, Playwright will handle)", query)
+        return []
 
     def _parse_results(self, html: str, query: str) -> List[Dict[str, Any]]:
         total_len = len(html)
@@ -347,6 +305,105 @@ class GoogleJobsScraper(BaseScraper):
     async def _needs_javascript(self, html: str) -> bool:
         return "enable javascript" in html.lower() or "/enablejs" in html
 
+    def _parse_xhr_jobs(self, xhr_responses: List[Dict[str, Any]], query: str) -> List[Dict[str, Any]]:
+        cards = []
+        seen = set()
+
+        for xhr in xhr_responses:
+            body = xhr.get("body", "")
+            if not body:
+                continue
+
+            # Try direct JSON parse
+            try:
+                data = json.loads(body)
+            except json.JSONDecodeError:
+                pass
+
+            # Try to find JSON inside async response (Google wraps in `)]}'\n`)
+            for prefix in [")]}'\n", ")]}'\n"]:
+                if body.startswith(prefix):
+                    try:
+                        data = json.loads(body[len(prefix):])
+                    except (json.JSONDecodeError, IndexError):
+                        pass
+
+            if not data:
+                continue
+
+            # Navigate to the job array in Google's response structure
+            items = data
+            if isinstance(data, dict):
+                for key in ["jobs", "results", "items", "data", "job_results"]:
+                    if key in data and isinstance(data[key], list):
+                        items = data[key]
+                        break
+
+            if not isinstance(items, list):
+                items = [items]
+
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                title = item.get("jobTitle") or item.get("title") or item.get("name") or ""
+                title = title.strip()
+                if not title or len(title) < 4 or title in seen:
+                    continue
+                seen.add(title)
+
+                company = ""
+                org = item.get("hiringOrganization") or item.get("company") or item.get("employer") or {}
+                if isinstance(org, dict):
+                    company = org.get("name", "") or org.get("legalName", "")
+                elif isinstance(org, str):
+                    company = org
+
+                location = ""
+                loc = item.get("jobLocation") or item.get("location") or {}
+                if isinstance(loc, dict):
+                    loc_name = loc.get("name", "")
+                    loc_addr = loc.get("address", "")
+                    location = loc_name or loc_addr
+                elif isinstance(loc, str):
+                    location = loc
+
+                desc = item.get("description") or item.get("snippet") or ""
+                if isinstance(desc, dict):
+                    desc = desc.get("value", "")
+
+                salary_min, salary_max = None, None
+                salary = item.get("baseSalary") or item.get("salary") or {}
+                if isinstance(salary, dict):
+                    value = salary.get("value") or {}
+                    if isinstance(value, dict):
+                        salary_min = value.get("minValue") or value.get("min")
+                        salary_max = value.get("maxValue") or value.get("max")
+
+                posted_at = item.get("datePosted") or item.get("postedDate") or item.get("publishedDate") or ""
+                job_url = item.get("url") or item.get("link") or item.get("jobUrl") or ""
+
+                remote = any(w in title.lower() for w in ["remoto", "remote", "home office"]) or \
+                         any(w in (desc or "").lower() for w in ["remoto", "remote", "home office"])
+
+                cards.append({
+                    "title": title,
+                    "company": company,
+                    "location": location,
+                    "remote": remote,
+                    "description": desc,
+                    "salary_min": salary_min,
+                    "salary_max": salary_max,
+                    "salary_text": "",
+                    "detail_url": job_url,
+                    "posted_at": posted_at,
+                    "direct_apply": False,
+                })
+
+        if cards:
+            logger.info("XHR parser extracted %d jobs from %d responses for '%s'",
+                        len(cards), len(xhr_responses), query)
+        return cards
+
     async def _search_with_playwright(self, query: str) -> List[Dict[str, Any]]:
         from playwright.async_api import async_playwright
         from pathlib import Path
@@ -356,7 +413,7 @@ class GoogleJobsScraper(BaseScraper):
 
         params = {
             "q": f"{query} brasil vaga",
-            "ibp": "htl;jobs",
+            "udm": "8",
             "gl": GOOGLE_JOBS_COUNTRY,
             "hl": GOOGLE_JOBS_LANG,
         }
@@ -397,8 +454,25 @@ class GoogleJobsScraper(BaseScraper):
 
                 page = await context.new_page()
 
+                # XHR route interception — capture Google Jobs API responses
+                xhr_jobs: List[Dict] = []
+                async def on_response(response):
+                    try:
+                        rurl = response.url
+                        if 'async/job' in rurl or 'job_status' in rurl or 'job_search' in rurl:
+                            body = await response.text()
+                            if body and len(body) > 100:
+                                logger.info("PW: XHR captured %s (%d bytes)", rurl, len(body))
+                                (debug_dir / f"xhr_{safe_query}_{len(xhr_jobs)}.json").write_text(body, encoding="utf-8")
+                                xhr_jobs.append({"url": rurl, "body": body})
+                    except Exception:
+                        pass
+                page.on("response", lambda resp: asyncio.ensure_future(on_response(resp)))
+
                 logger.info("PW: navigating...")
                 await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                current_url = page.url
+                logger.info("PW: final URL: %s", current_url)
                 await page.screenshot(path=str(debug_dir / f"01_after_load_{safe_query}.png"))
                 logger.info("PW: page loaded, title='%s'", await page.title())
 
@@ -416,6 +490,15 @@ class GoogleJobsScraper(BaseScraper):
                 logger.info("PW: waiting for job results rendering...")
                 await asyncio.sleep(5)
 
+                # Try parsing XHR data first (cleanest approach)
+                cards = self._parse_xhr_jobs(xhr_jobs, query)
+                if cards:
+                    logger.info("PW: XHR extraction found %d jobs for '%s'", len(cards), query)
+                    await page.screenshot(path=str(debug_dir / f"05_final_{safe_query}.png"))
+                    for c in cards[:5]:
+                        logger.info("PW: sample XHR card: '%s' @ %s [%s]", c["title"], c["company"], c["location"])
+                    return cards
+
                 logger.info("PW: scanning DOM structure...")
                 dom_scan = await page.evaluate("""
                     () => {
@@ -425,7 +508,6 @@ class GoogleJobsScraper(BaseScraper):
                             const tag = el.tagName.toLowerCase();
                             const cls = el.className || '';
                             const hasDataDocid = el.hasAttribute('data-docid');
-                            const hasJsController = el.hasAttribute('jscontroller');
                             if (!results[tag]) results[tag] = { count: 0, classes: new Set(), dataDocid: false };
                             results[tag].count++;
                             if (cls && typeof cls === 'string') {
@@ -449,44 +531,41 @@ class GoogleJobsScraper(BaseScraper):
                         logger.info("PW: DOM <%s> count=%d hasDocid=%s classes=%s",
                                     tag, info["count"], info["hasDataDocid"], info["classes"][:5])
 
-                job_selectors = [
-                    "div[data-docid]", "div[class*='job']", "div[class*='gws-plugins-horizon-jobs']",
-                    "div[jscontroller]", "div[jsname]", "div[role='list']", "div[data-ved]",
-                    "h3", "a[href*='/jobs']", "div[class*='card']", "li[class*='job']",
-                    "div[role='listitem']", "div[role='option']", "a[href*='https']",
-                    "div[class*='result']", "div[class*='listing']", "div[class*='item']",
-                    "span[class*='title']", "div[class*='title']",
+                key_selectors = [
+                    "div[role='feed']", "[role='list']", "[data-docid]",
+                    "gws-plugins-horizon-jobs", "[class*='gws-plugins']",
+                    "div[jscontroller]", "h3", "a[href*='/jobs']",
                 ]
-                for sel in job_selectors:
+                for sel in key_selectors:
                     try:
                         count = await page.locator(sel).count()
                         if count > 0:
-                            logger.info("PW: selector OK '%s' = %d elements", sel, count)
+                            logger.info("PW: selector '%s' = %d elements", sel, count)
                     except Exception:
                         pass
 
                 await page.screenshot(path=str(debug_dir / f"03_before_scroll_{safe_query}.png"))
-
                 for i in range(5):
                     await page.evaluate("(y) => window.scrollBy(0, y)", 400 + i * 200)
                     await asyncio.sleep(1.5)
                 await asyncio.sleep(3)
                 await page.screenshot(path=str(debug_dir / f"04_after_scroll_{safe_query}.png"))
 
-                logger.info("PW: extracting job data from DOM...")
-
+                # Container analysis
                 container_info = await page.evaluate("""
                     () => {
                         const info = [];
-                        // Check for role=list containers
-                        document.querySelectorAll('[role="list"], [role="listbox"], [role="feed"]').forEach((el, i) => {
-                            const html = el.innerHTML.substring(0, 300).replace(/<[^>]+>/g,' ').replace(/\\s+/g,' ').trim();
-                            info.push({ type: 'role-list', index: i, children: el.children.length, preview: html.substring(0, 200) });
+                        document.querySelectorAll('[role="feed"]').forEach((el, i) => {
+                            const preview = el.innerHTML.substring(0, 500).replace(/<[^>]+>/g,' ').replace(/\\s+/g,' ').trim();
+                            info.push({ type: 'role-feed', index: i, children: el.children.length, preview: preview.substring(0, 300) });
                         });
-                        // Check for main content
+                        document.querySelectorAll('[role="list"]').forEach((el, i) => {
+                            const preview = el.innerHTML.substring(0, 300).replace(/<[^>]+>/g,' ').replace(/\\s+/g,' ').trim();
+                            info.push({ type: 'role-list', index: i, children: el.children.length, preview: preview.substring(0, 200) });
+                        });
                         document.querySelectorAll('#center_col, [role="main"], #main').forEach((el, i) => {
-                            const html = el.innerHTML.substring(0, 300).replace(/<[^>]+>/g,' ').replace(/\\s+/g,' ').trim();
-                            info.push({ type: 'main', index: i, children: el.children.length, preview: html.substring(0, 200) });
+                            const preview = el.innerHTML.substring(0, 300).replace(/<[^>]+>/g,' ').replace(/\\s+/g,' ').trim();
+                            info.push({ type: 'main', index: i, children: el.children.length, preview: preview.substring(0, 200) });
                         });
                         return info;
                     }
@@ -502,16 +581,15 @@ class GoogleJobsScraper(BaseScraper):
 
                 cards = await page.evaluate("""
                     () => {
-                        const BAD = ["compartilhar","facebook","copiar link","ferramentas",
-                                     "anúncio","anuncio","seguir","vagas salvas","empregos",
-                                     "clique","twitter","linkedin","whatsapp","denunciar",
-                                     "reportar","candidatar","candidate","salvar",
-                                     "videos","vÍdeos","notÍcias","shopping","modo ia",
-                                     "finanças","modo","ia","imagens","maps","maps",
-                                     "todas","notícias","shopping","videos","livros",
-                                     "voos","finance"];
+                        const BAD_KEYWORDS = ["compartilhar","facebook","copiar link","ferramentas",
+                                               "anúncio","anuncio","seguir","vagas salvas","empregos",
+                                               "clique","twitter","linkedin","whatsapp","denunciar",
+                                               "reportar","candidatar","candidate","salvar",
+                                               "videos","notícias","shopping","modo ia",
+                                               "finanças","imagens","maps",
+                                               "todas","livros","voos","finance"];
 
-                        function scrapeCards(container) {
+                        function extractFromContainer(container) {
                             const cards = [];
                             const seen = new Set();
                             const items = container.children;
@@ -522,8 +600,7 @@ class GoogleJobsScraper(BaseScraper):
                                     const title = (titleEl.innerText || titleEl.textContent || '').trim();
                                     if (!title || title.length < 5 || seen.has(title)) continue;
                                     const ltitle = title.toLowerCase();
-                                    if (BAD.some(k => ltitle.includes(k))) continue;
-                                    if (ltitle.includes('jobs') || ltitle.includes('vagas') || ltitle.includes('empregos')) continue;
+                                    if (BAD_KEYWORDS.some(k => ltitle.includes(k))) continue;
                                     seen.add(title);
 
                                     const link = item.querySelector('a[href*="http"]');
@@ -545,91 +622,65 @@ class GoogleJobsScraper(BaseScraper):
                             return cards;
                         }
 
-                        // Strategy 1: Find the container by looking for Google Jobs-specific widgets or data attributes
-                        const candidates = [];
-
-                        // Look for elements with role="list" or role="feed" (standard for repeated content)
-                        const lists = document.querySelectorAll('[role="list"], [role="listbox"], [role="feed"]');
-                        for (const list of lists) {
-                            const children = Array.from(list.children).filter(c => c.tagName !== 'SCRIPT' && c.tagName !== 'STYLE');
-                            if (children.length >= 2) {
-                                candidates.push({ el: list, type: 'role', count: children.length });
-                            }
+                        // Strategy 1: role="feed" — Google Jobs panel
+                        let results = [];
+                        const feeds = document.querySelectorAll('[role="feed"]');
+                        for (const feed of feeds) {
+                            const found = extractFromContainer(feed);
+                            if (found.length > 0) { results = found; break; }
                         }
 
-                        // Look for elements with gws-plugins-horizon-jobs
-                        const gwsEls = document.querySelectorAll('gws-plugins-horizon-jobs, [class*="gws-plugins-horizon-jobs"]');
-                        for (const g of gwsEls) {
-                            candidates.push({ el: g, type: 'gws', count: g.children.length });
-                        }
-
-                        // Look for elements with data-docid (Google's card identifier)
-                        const docidParents = new Set();
-                        document.querySelectorAll('[data-docid]').forEach(el => {
-                            docidParents.add(el.parentElement);
-                        });
-                        for (const parent of docidParents) {
-                            if (parent && parent.children.length >= 2) {
-                                candidates.push({ el: parent, type: 'docid', count: parent.children.length });
-                            }
-                        }
-
-                        // Try each candidate container
-                        const results = [];
-                        const tried = new Set();
-                        for (const c of candidates) {
-                            if (tried.has(c.el)) continue;
-                            tried.add(c.el);
-                            const found = scrapeCards(c.el);
-                            if (found.length > 0) {
-                                results.push(...found);
-                                break;
-                            }
-                        }
-
-                        // Strategy 2: Find main content area by looking for the center panel
+                        // Strategy 2: data-docid parents (Google card identifiers)
                         if (!results.length) {
-                            const centerAreas = document.querySelectorAll('#center_col, #main, #rcnt, [role="main"]');
+                            const docidParents = new Set();
+                            document.querySelectorAll('[data-docid]').forEach(el => docidParents.add(el.parentElement));
+                            for (const parent of docidParents) {
+                                if (parent && parent.children.length >= 2) {
+                                    const found = extractFromContainer(parent);
+                                    if (found.length > 0) { results = found; break; }
+                                }
+                            }
+                        }
+
+                        // Strategy 3: gws-plugins-horizon-jobs
+                        if (!results.length) {
+                            const gwsEls = document.querySelectorAll('gws-plugins-horizon-jobs, [class*="gws-plugins-horizon-jobs"]');
+                            for (const g of gwsEls) {
+                                const found = extractFromContainer(g);
+                                if (found.length > 0) { results = found; break; }
+                            }
+                        }
+
+                        // Strategy 4: role="list" in main content
+                        if (!results.length) {
+                            const centerAreas = document.querySelectorAll('#center_col, #main, [role="main"]');
                             for (const area of centerAreas) {
                                 const lists = area.querySelectorAll('[role="list"], [role="listbox"]');
                                 for (const list of lists) {
-                                    const found = scrapeCards(list);
-                                    if (found.length > 0) {
-                                        results.push(...found);
-                                        break;
-                                    }
+                                    const found = extractFromContainer(list);
+                                    if (found.length > 0) { results = found; break; }
                                 }
                                 if (results.length) break;
                             }
                         }
 
-                        // Strategy 3: Last resort - any container whose children have job-like links
+                        // Strategy 5: score divs by job-link count
                         if (!results.length) {
-                            const allContainers = document.querySelectorAll('div, ul, ol');
+                            const allDivs = document.querySelectorAll('div, ul, ol');
                             const scored = [];
-                            for (const el of allContainers) {
+                            for (const el of allDivs) {
                                 const children = Array.from(el.children).filter(c => c.tagName === 'DIV' || c.tagName === 'LI');
                                 if (children.length < 3 || children.length > 80) continue;
-                                const jobLinks = children.filter(c => {
-                                    const a = c.querySelector('a[href*="job"], a[href*="vaga"], a[href*="career"]');
-                                    return !!a;
-                                });
-                                if (jobLinks.length >= 2) {
-                                    scored.push({ el, score: jobLinks.length, total: children.length });
-                                }
+                                const jobLinks = children.filter(c => c.querySelector('a[href*="job"], a[href*="vaga"]'));
+                                if (jobLinks.length >= 2) scored.push({ el, score: jobLinks.length, total: children.length });
                             }
                             scored.sort((a, b) => b.score - a.score);
-                            for (const s of scored.slice(0, 3)) {
-                                // Check if this container looks like job cards (not UI tabs)
-                                const sampleText = (s.el.innerText || '').toLowerCase();
-                                const jobIndicators = ['desenvolvedor','analista','engenheiro','salário','empresa','remoto','presencial','são paulo','rio de janeiro'];
-                                const hasJobIndicator = jobIndicators.some(k => sampleText.includes(k));
-                                if (hasJobIndicator) {
-                                    const found = scrapeCards(s.el);
-                                    if (found.length > 0) {
-                                        results.push(...found);
-                                        break;
-                                    }
+                            for (const s of scored.slice(0, 5)) {
+                                const text = (s.el.innerText || '').toLowerCase();
+                                const indicators = ['desenvolvedor','analista','engenheiro','salário','empresa','remoto','são paulo'];
+                                if (indicators.some(k => text.includes(k))) {
+                                    const found = extractFromContainer(s.el);
+                                    if (found.length > 0) { results = found; break; }
                                 }
                             }
                         }
@@ -638,21 +689,18 @@ class GoogleJobsScraper(BaseScraper):
                     }
                 """)
 
-                logger.info("PW: strategy 1 extracted %d cards", len(cards))
+                logger.info("PW: DOM extraction found %d cards", len(cards))
 
                 if not cards:
-                    logger.info("PW: container strategies found 0, trying structured data...")
+                    logger.info("PW: DOM extraction 0, trying structured data in scripts...")
                     cards = await page.evaluate("""
                         () => {
                             const results = [];
                             const seen = new Set();
-                            const BAD = ["compartilhar","facebook","copiar link","ferramentas","anúncio","anuncio"];
-
-                            // Try to find Google Jobs data in script tags
                             const scripts = document.querySelectorAll('script:not([src])');
                             for (const s of scripts) {
                                 const text = s.textContent || '';
-                                if (!text.includes('jobTitle') && !text.includes('"title"')) continue;
+                                if (!text.includes('jobTitle') && !text.includes('"title"') && !text.includes('hiringOrganization')) continue;
                                 try {
                                     const idx = text.indexOf('[');
                                     if (idx === -1) continue;
@@ -666,12 +714,9 @@ class GoogleJobsScraper(BaseScraper):
                                         if (!item || typeof item !== 'object') continue;
                                         const title = (item.jobTitle || item.title || item.name || '').trim();
                                         if (!title || title.length < 4 || seen.has(title)) continue;
-                                        if (BAD.some(b => title.toLowerCase().includes(b))) continue;
                                         seen.add(title);
-                                        const company = (item.company || item.employer || item.hiringOrganization || {}).name
-                                                        || item.company || '';
-                                        const loc = (item.location || item.jobLocation || '').name
-                                                    || item.location || item.city || '';
+                                        const company = (item.company || item.employer || item.hiringOrganization || {}).name || item.company || '';
+                                        const loc = (item.location || item.jobLocation || '').name || item.location || item.city || '';
                                         const url = item.url || item.link || item.jobUrl || '';
                                         results.push({ title, company, location: loc, salaryText: '', dateText: '', url });
                                     }
@@ -681,30 +726,24 @@ class GoogleJobsScraper(BaseScraper):
                         }
                     """)
                     if cards:
-                        logger.info("PW: structured data extraction found %d jobs", len(cards))
+                        logger.info("PW: script data found %d jobs", len(cards))
 
                 if not cards:
-                    logger.info("PW: structured data found 0, trying focused link extraction...")
+                    logger.info("PW: script data 0, trying link-based extraction...")
                     cards = await page.evaluate("""
                         () => {
                             const results = [];
                             const seen = new Set();
-                            const BAD = ["compartilhar","facebook","copiar link","ferramentas","anúncio"];
-
-                            // Find job-related links only
-                            const allLinks = document.querySelectorAll('a[href*="/jobs"], a[href*="viewjob"], a[href*="job?"], a[href*="career"], a[href*="vaga"]');
-                            for (const a of allLinks) {
+                            const links = document.querySelectorAll('a[href*="/jobs"], a[href*="viewjob"], a[href*="career"], a[href*="vaga"]');
+                            for (const a of links) {
                                 const title = (a.innerText || a.textContent || '').trim();
                                 if (!title || title.length < 5 || seen.has(title)) continue;
-                                if (BAD.some(b => title.toLowerCase().includes(b))) continue;
                                 seen.add(title);
-
                                 const card = a.closest('div, li, article') || a.parentElement;
-                                const allText = card ? card.innerText : title;
-                                const lines = allText.split('\\n').map(l => l.trim()).filter(l => l && l !== title);
+                                const text = card ? card.innerText : title;
+                                const lines = text.split('\\n').map(l => l.trim()).filter(l => l && l !== title);
                                 const company = lines.find(l => l.length > 1 && l.length < 60) || '';
                                 const location = lines.find(l => l !== company && l.length > 1 && l.length < 80) || '';
-
                                 results.push({ title, company, location, salaryText: '', dateText: '', url: a.href || '' });
                             }
                             return results;
@@ -713,14 +752,12 @@ class GoogleJobsScraper(BaseScraper):
                     if cards:
                         logger.info("PW: link extraction found %d jobs", len(cards))
 
-                logger.info("PW: total extracted %d cards", len(cards))
-
-                # Filter out UI elements
+                # Final UI filter
                 filtered = []
                 for card in cards:
                     title_lower = card.get("title", "").lower()
                     if any(kw in title_lower for kw in ui_keywords):
-                        logger.debug("PW: filtered UI element: '%s'", card.get("title"))
+                        logger.debug("PW: filtered UI: '%s'", card.get("title"))
                         continue
                     if len(card.get("title", "")) < 4:
                         continue
@@ -736,7 +773,7 @@ class GoogleJobsScraper(BaseScraper):
 
                 if not cards:
                     body_text = await page.evaluate("document.body.innerText.substring(0, 4000)")
-                    logger.info("PW: page body preview (first 600 chars): %s",
+                    logger.info("PW: page body: %s",
                                 body_text[:600].replace('\\n', ' ').replace('\\u00a0', ' '))
                 else:
                     for c in cards[:5]:
@@ -749,35 +786,18 @@ class GoogleJobsScraper(BaseScraper):
 
     async def fetch_raw(self) -> List[Dict[str, Any]]:
         self._collected = []
-        logger.info("Google Jobs scraping started (%d queries)", len(GOOGLE_JOBS_QUERIES))
+        logger.info("Google Jobs scraping started (%d queries — Playwright only, JS-rendered)", len(GOOGLE_JOBS_QUERIES))
 
-        needs_playwright = False
         for query in GOOGLE_JOBS_QUERIES:
             if len(self._collected) >= GOOGLE_JOBS_MAX_JOBS:
                 break
-            logger.info("Searching Google Jobs for: %s", query)
-            cards = await self._search_query(query)
-            logger.info("Google Jobs found %d raw entries for '%s'", len(cards), query)
+            logger.info("Playwright search for: %s", query)
+            cards = await self._search_with_playwright(query)
             for card in cards:
                 if len(self._collected) >= GOOGLE_JOBS_MAX_JOBS:
                     break
                 self._collected.append(card)
                 await asyncio.sleep(self._random_delay())
-            if not cards:
-                needs_playwright = True
-
-        if needs_playwright:
-            logger.info("curl_cffi returned no results, trying Playwright for JavaScript rendering")
-            for query in GOOGLE_JOBS_QUERIES:
-                if len(self._collected) >= GOOGLE_JOBS_MAX_JOBS:
-                    break
-                logger.info("Playwright search for: %s", query)
-                cards = await self._search_with_playwright(query)
-                for card in cards:
-                    if len(self._collected) >= GOOGLE_JOBS_MAX_JOBS:
-                        break
-                    self._collected.append(card)
-                    await asyncio.sleep(self._random_delay())
 
         logger.info("Google Jobs collected %d raw entries total", len(self._collected))
         return self._collected

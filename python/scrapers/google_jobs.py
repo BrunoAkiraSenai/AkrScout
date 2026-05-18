@@ -344,10 +344,74 @@ class GoogleJobsScraper(BaseScraper):
                 return dt.isoformat()
         return None
 
+    async def _needs_javascript(self, html: str) -> bool:
+        return "enable javascript" in html.lower() or "/enablejs" in html
+
+    async def _search_with_playwright(self, query: str) -> List[Dict[str, Any]]:
+        from playwright.async_api import async_playwright
+
+        params = {
+            "q": f"{query} brasil vaga",
+            "ibp": "htl;jobs",
+            "gl": GOOGLE_JOBS_COUNTRY,
+            "hl": GOOGLE_JOBS_LANG,
+        }
+        url = f"https://www.google.com/search?{urlencode(params)}"
+        logger.info("Playwright Google Jobs URL: %s", url)
+
+        async with async_playwright() as pw:
+            launch_opts = {
+                "headless": True,
+                "args": [
+                    "--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage",
+                    "--disable-blink-features=AutomationControlled",
+                ],
+            }
+            try:
+                launch_opts["channel"] = "chrome"
+                browser = await pw.chromium.launch(**launch_opts)
+            except Exception:
+                launch_opts.pop("channel", None)
+                browser = await pw.chromium.launch(**launch_opts)
+
+            try:
+                context = await browser.new_context(
+                    user_agent=random.choice(USER_AGENTS),
+                    viewport={"width": 1920, "height": 1080},
+                    locale="pt-BR",
+                    timezone_id="America/Sao_Paulo",
+                )
+                page = await context.new_page()
+                await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+
+                try:
+                    await page.wait_for_selector(
+                        "div[class*='job-card'], div[id*='jobs'], div[data-docid], div[jsname]",
+                        timeout=15000
+                    )
+                except Exception:
+                    pass
+
+                await asyncio.sleep(3)
+
+                for _ in range(3):
+                    await page.evaluate("window.scrollBy(0, 500)")
+                    await asyncio.sleep(1)
+
+                html = await page.content()
+                logger.debug("Playwright HTML size: %d for '%s'", len(html), query)
+
+                cards = self._parse_results(html, query)
+                logger.info("Playwright found %d jobs for '%s'", len(cards), query)
+                return cards
+            finally:
+                await browser.close()
+
     async def fetch_raw(self) -> List[Dict[str, Any]]:
         self._collected = []
         logger.info("Google Jobs scraping started (%d queries)", len(GOOGLE_JOBS_QUERIES))
 
+        needs_playwright = False
         for query in GOOGLE_JOBS_QUERIES:
             if len(self._collected) >= GOOGLE_JOBS_MAX_JOBS:
                 break
@@ -359,6 +423,21 @@ class GoogleJobsScraper(BaseScraper):
                     break
                 self._collected.append(card)
                 await asyncio.sleep(self._random_delay())
+            if not cards:
+                needs_playwright = True
+
+        if needs_playwright:
+            logger.info("curl_cffi returned no results, trying Playwright for JavaScript rendering")
+            for query in GOOGLE_JOBS_QUERIES:
+                if len(self._collected) >= GOOGLE_JOBS_MAX_JOBS:
+                    break
+                logger.info("Playwright search for: %s", query)
+                cards = await self._search_with_playwright(query)
+                for card in cards:
+                    if len(self._collected) >= GOOGLE_JOBS_MAX_JOBS:
+                        break
+                    self._collected.append(card)
+                    await asyncio.sleep(self._random_delay())
 
         logger.info("Google Jobs collected %d raw entries total", len(self._collected))
         return self._collected

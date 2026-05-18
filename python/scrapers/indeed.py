@@ -23,14 +23,17 @@ from services.supabase import DatabaseService
 from utils.logger import setup_logger
 from utils.normalizer import clean_html, parse_salary, truncate
 
+from pathlib import Path
+DEBUG_DIR = Path("logs") / "indeed-debug"
+
 from .base import BaseScraper, ScrapedJob
 
 logger = setup_logger("indeed")
 
 USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
 ]
 
 VIEWPORTS = [
@@ -56,22 +59,29 @@ class IndeedScraper(BaseScraper):
         return delay
 
     async def _create_browser(self, playwright) -> Browser:
-        ua = random.choice(USER_AGENTS)
-        browser = await playwright.chromium.launch(
-            headless=BROWSER_HEADLESS,
-            args=[
-                "--disable-blink-features=AutomationControlled",
+        launch_opts = {
+            "headless": BROWSER_HEADLESS,
+            "args": [
                 "--no-sandbox",
                 "--disable-setuid-sandbox",
                 "--disable-dev-shm-usage",
-                "--disable-gpu",
+                "--disable-blink-features=AutomationControlled",
                 "--disable-features=IsolateOrigins,site-per-process",
                 "--no-first-run",
                 "--no-default-browser-check",
-                "--disable-web-security",
                 "--disable-features=DialMediaRouteProvider",
             ],
-        )
+        }
+        try:
+            launch_opts["channel"] = "chrome"
+            logger.debug("Attempting system Chrome launch...")
+            browser = await playwright.chromium.launch(**launch_opts)
+            logger.info("Browser: Chrome (system) headless=%s", BROWSER_HEADLESS)
+        except Exception as e:
+            logger.warning("System Chrome unavailable (%s), falling back to bundled Chromium", e)
+            launch_opts.pop("channel")
+            browser = await playwright.chromium.launch(**launch_opts)
+            logger.info("Browser: Chromium (bundled) headless=%s", BROWSER_HEADLESS)
         return browser
 
     async def _create_context(self, browser: Browser) -> BrowserContext:
@@ -89,19 +99,35 @@ class IndeedScraper(BaseScraper):
 
     async def _apply_stealth(self, context: BrowserContext) -> None:
         await context.add_init_script("""
+            // === webdriver ===
             Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+
+            // === plugins ===
             Object.defineProperty(navigator, 'plugins', {
-                get: () => [1, 2, 3, 4, 5],
+                get: () => [
+                    {
+                        0: {type: "application/x-google-chrome-pdf", suffixes: "pdf", description: "Portable Document Format"},
+                        description: "Portable Document Format",
+                        filename: "internal-pdf-viewer",
+                        length: 1,
+                        name: "Chrome PDF Plugin"
+                    },
+                    {
+                        0: {type: "application/pdf", suffixes: "pdf", description: "Portable Document Format"},
+                        description: "Portable Document Format",
+                        filename: "internal-pdf-viewer",
+                        length: 1,
+                        name: "Chrome PDF Viewer"
+                    }
+                ],
             });
+
+            // === languages ===
             Object.defineProperty(navigator, 'languages', {
                 get: () => ['pt-BR', 'pt', 'en-US', 'en'],
             });
-            window.chrome = {
-                runtime: {},
-                loadTimes: function() {},
-                csi: function() {},
-                app: {},
-            };
+
+            // === permissions ===
             if (window.navigator.permissions) {
                 const orig = window.navigator.permissions.query.bind(window.navigator.permissions);
                 window.navigator.permissions.query = (p) => (
@@ -110,7 +136,60 @@ class IndeedScraper(BaseScraper):
                         : orig(p)
                 );
             }
+
+            // === hardware concurrency ===
+            Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 });
+            Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 });
+
+            // === connection ===
+            Object.defineProperty(navigator, 'connection', {
+                get: () => ({
+                    effectiveType: '4g',
+                    rtt: 50,
+                    downlink: 10,
+                    saveData: false,
+                }),
+            });
+
+            // === chrome.runtime (full) ===
+            window.chrome = window.chrome || {};
+            window.chrome.runtime = {
+                connect: () => {},
+                sendMessage: () => {},
+                onConnect: { addListener: () => {} },
+                onMessage: { addListener: () => {} },
+                getManifest: () => ({ version: "1.0.0" }),
+            };
+            window.chrome.loadTimes = () => {};
+            window.chrome.csi = () => {};
+            window.chrome.app = { isInstalled: false };
+
+            // === webgl vendor ===
+            const getParam = WebGLRenderingContext.prototype.getParameter;
+            WebGLRenderingContext.prototype.getParameter = function(p) {
+                if (p === 37445) return 'Google Inc. (Intel)';
+                if (p === 37446) return 'ANGLE (Intel, Mesa Intel Graphics, OpenGL 4.5)';
+                return getParam(p);
+            };
         """)
+
+    async def _save_debug_artifacts(self, page: Page, label: str) -> None:
+        try:
+            DEBUG_DIR.mkdir(parents=True, exist_ok=True)
+            screenshot_path = DEBUG_DIR / f"screenshot_{label}.png"
+            await page.screenshot(path=str(screenshot_path), full_page=True)
+            logger.info("Debug screenshot saved: %s", screenshot_path)
+
+            html_path = DEBUG_DIR / f"page_{label}.html"
+            html = await page.content()
+            html_path.write_text(html, encoding="utf-8")
+            logger.info("Debug HTML saved: %s", html_path)
+
+            text_path = DEBUG_DIR / f"text_{label}.txt"
+            text = await page.evaluate("document.body.innerText")
+            text_path.write_text(text, encoding="utf-8")
+        except Exception as e:
+            logger.warning("Failed to save debug artifacts: %s", e)
 
     async def _dismiss_cookies(self, page: Page) -> None:
         try:
@@ -185,7 +264,7 @@ class IndeedScraper(BaseScraper):
 
                         await asyncio.sleep(self._random_delay(1, 2))
 
-                        pw_cards = await self._extract_search_cards(page)
+                        pw_cards = await self._extract_search_cards(page, query)
                         cards.extend(pw_cards)
                         logger.info("Playwright found %d cards on page %d for '%s'", len(pw_cards), page_num + 1, query)
                     except Exception as e:
@@ -202,18 +281,23 @@ class IndeedScraper(BaseScraper):
                 await self._enrich_job(context, card)
                 await asyncio.sleep(self._random_delay())
 
-    async def _extract_search_cards(self, page: Page) -> List[Dict[str, Any]]:
+    async def _extract_search_cards(self, page: Page, query: str = "unknown") -> List[Dict[str, Any]]:
         cards = []
         try:
-            page_text = await page.evaluate("document.body.innerText.substring(0, 1000)")
+            page_url = page.url
+            page_title = await page.title()
+            logger.info("Indeed page loaded: title='%s' url=%s", page_title, page_url)
+
+            page_text = await page.evaluate("document.body.innerText.substring(0, 1500)")
             page_text_lower = page_text.lower()
 
-            blocked = ["captcha", "verify", "robot", "automated", "access denied", "please confirm you are human"]
+            blocked = ["captcha", "verify", "robot", "automated", "access denied", "please confirm you are human",
+                       "verificação adicional", "cloudflare", "ray id", "checking your browser",
+                       "attention required", "cf-ray"]
             for kw in blocked:
                 if kw in page_text_lower:
-                    logger.warning("Blocking detected on Indeed (keyword: '%s')", kw)
-                    body_preview = page_text.replace('\n', ' ')[:300]
-                    logger.debug("Blocked page: %s", body_preview)
+                    logger.warning("BLOCKED by Cloudflare! (keyword: '%s') — saving debug artifacts", kw)
+                    await self._save_debug_artifacts(page, f"blocked_{query}")
                     return cards
 
             no_results = ["no results", "nenhum resultado", "0 resultados", "no jobs found", "no matching jobs"]
@@ -272,22 +356,16 @@ class IndeedScraper(BaseScraper):
                     () => {
                         const results = [];
                         const seen = new Set();
-
                         const allElements = document.querySelectorAll('[data-jk]');
                         for (const el of allElements) {
                             try {
                                 const jk = el.getAttribute('data-jk');
                                 if (!jk || seen.has(jk) || jk.length < 5) continue;
                                 seen.add(jk);
-
                                 const title = (el.innerText || el.textContent || '').trim().substring(0, 100);
                                 if (!title || title.length < 5) continue;
-
                                 results.push({
-                                    jk: jk,
-                                    title: title,
-                                    company: '',
-                                    location: '',
+                                    jk: jk, title: title, company: '', location: '',
                                     url: 'https://br.indeed.com/viewjob?jk=' + jk,
                                 });
                             } catch(e) {}
@@ -311,15 +389,10 @@ class IndeedScraper(BaseScraper):
                                 const jk = jkMatch[1];
                                 if (!jk || seen.has(jk)) continue;
                                 seen.add(jk);
-
                                 let title = (link.innerText || link.textContent || '').trim();
                                 if (!title || title.length < 3) continue;
-
                                 results.push({
-                                    jk: jk,
-                                    title: title,
-                                    company: '',
-                                    location: '',
+                                    jk: jk, title: title, company: '', location: '',
                                     url: 'https://br.indeed.com/viewjob?jk=' + jk,
                                 });
                             } catch(e) {}
@@ -330,13 +403,11 @@ class IndeedScraper(BaseScraper):
 
             if not cards:
                 logger.warning("No cards found via any strategy on Indeed")
-                body_sample = page_text.replace('\n', ' ')[:300]
-                logger.info("Indeed page content: %s", body_sample)
-                html_sample = await page.evaluate("document.body.innerHTML.substring(0, 1500)")
-                logger.debug("Indeed HTML sample: %s", html_sample[:500])
+                logger.info("Indeed page text preview: %s", page_text.replace('\n', ' ')[:500])
+                await self._save_debug_artifacts(page, f"no_cards_{query}")
 
         except Exception as e:
-            logger.warning("Card extraction error: %s", e)
+            logger.warning("Card extraction error: %s", e, exc_info=True)
 
         return cards
 

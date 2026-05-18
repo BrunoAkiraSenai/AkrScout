@@ -17,7 +17,6 @@ name: AKR Scout — Scraper Pipeline
 
 on:
   schedule:
-    # Daily at 06:00 UTC
     - cron: "0 6 * * *"
   workflow_dispatch:
     inputs:
@@ -30,6 +29,10 @@ on:
           - DEBUG
           - INFO
           - WARNING
+
+concurrency:
+  group: scraper-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   PYTHON_VERSION: "3.12"
@@ -100,11 +103,20 @@ jobs:
           pip install -r requirements.txt
 
       # ------------------------------------------------------------------
-      # 6. Install Playwright browsers (Chromium headless)
+      # 6. Verify system Chrome (Playwright channel="chrome")
       # ------------------------------------------------------------------
-      - name: Install Playwright Chromium
+      - name: Verify Chrome installation
         run: |
-          playwright install chromium
+          echo "::group::Chrome Check"
+          which google-chrome || which google-chrome-stable || echo "WARNING: Chrome not found in PATH"
+          google-chrome --version 2>/dev/null || google-chrome-stable --version 2>/dev/null || echo "WARNING: chrome --version failed"
+          echo "::endgroup::"
+
+      # ------------------------------------------------------------------
+      # 7. Install Playwright system deps (browser downloaded by Playwright)
+      # ------------------------------------------------------------------
+      - name: Install Playwright dependencies
+        run: |
           playwright install-deps chromium
 
       # ------------------------------------------------------------------
@@ -150,14 +162,16 @@ jobs:
           echo "Pipeline completed successfully"
 
       # ------------------------------------------------------------------
-      # 7. Upload pipeline logs as artifact (even on failure)
+      # 7. Upload pipeline logs + debug artifacts (even on failure)
       # ------------------------------------------------------------------
       - name: Upload pipeline logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pipeline-logs-${{ github.run_id }}
-          path: python/logs/
+          name: pipeline-artifacts-${{ github.run_id }}
+          path: |
+            python/logs/
+            python/logs/indeed-debug/
           retention-days: 7
           if-no-files-found: warn
 

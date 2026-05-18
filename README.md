@@ -43,6 +43,29 @@
   </a>
 
   <br/>
+  <br/>
+
+  <!-- Screenshots Row -->
+  <table>
+    <tr>
+      <td><img src="screenshots/dashboard.svg" alt="Dashboard" width="400"/></td>
+      <td><img src="screenshots/analytics.svg" alt="Analytics" width="400"/></td>
+    </tr>
+    <tr>
+      <td align="center"><em>Dashboard — visão geral do mercado em tempo real</em></td>
+      <td align="center"><em>Analytics — skills, salários e tendências</em></td>
+    </tr>
+    <tr>
+      <td><img src="screenshots/jobs.svg" alt="Jobs" width="400"/></td>
+      <td><img src="screenshots/favorites.svg" alt="Favorites" width="400"/></td>
+    </tr>
+    <tr>
+      <td align="center"><em>Jobs — busca, filtros e scouting</em></td>
+      <td align="center"><em>Favorites — salve e acompanhe vagas</em></td>
+    </tr>
+  </table>
+
+  <br/>
   <sub><strong>Desenvolvido por <a href="https://github.com/anomalyco">Bruno Akira Furumori</a></strong></sub>
   <br/>
   <sub>Scouting de vagas tech · Inteligência de mercado · Analytics de carreira</sub>
@@ -280,6 +303,39 @@ O scraper executa automaticamente todo dia às 06:00 UTC via GitHub Actions.
 - **Logs retidos** por 7 dias como artifacts
 - **Página de sumário** mostra status, duração e preview dos logs
 - **Trigger manual** suporta níveis DEBUG/INFO/WARNING
+
+---
+
+## Screenshots
+
+<table>
+  <tr>
+    <td><img src="screenshots/dashboard.svg" alt="Dashboard" width="400"/></td>
+    <td><img src="screenshots/analytics.svg" alt="Analytics" width="400"/></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Dashboard</strong> — Visão do mercado com stats, top skills, ranking de empresas</td>
+    <td align="center"><strong>Analytics</strong> — Salário por senioridade, remoto vs presencial, tendências de skills</td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/jobs.svg" alt="Jobs" width="400"/></td>
+    <td><img src="screenshots/favorites.svg" alt="Favorites" width="400"/></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Jobs</strong> — Busca, filtros por senioridade/remoto, paginação</td>
+    <td align="center"><strong>Favorites</strong> — Vagas salvas com acesso rápido</td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/login.svg" alt="Login" width="400"/></td>
+    <td><img src="screenshots/mobile.svg" alt="Mobile" width="400"/></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Autenticação</strong> — Supabase Auth com email/senha</td>
+    <td align="center"><strong>Mobile</strong> — Design responsivo com sidebar recolhível</td>
+  </tr>
+</table>
+
+> Screenshots serão adicionadas conforme o projeto evolui. Arquivos placeholder estão no diretório `screenshots/`.
 
 ---
 

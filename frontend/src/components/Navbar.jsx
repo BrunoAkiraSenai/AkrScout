@@ -40,7 +40,6 @@ export function Navbar() {
             <p className="max-w-28 truncate text-xs font-medium text-slate-200">
               {displayName}
             </p>
-            <p className="text-[10px] text-slate-500">{t('navbar.pro_plan')}</p>
           </div>
           <div className="h-8 w-8 shrink-0 rounded-full bg-gradient-to-br from-indigo-400 to-violet-600 ring-2 ring-slate-800" />
         </div>

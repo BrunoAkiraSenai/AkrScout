@@ -116,15 +116,26 @@ class DatabaseService:
                 f"::{row.get('location', '')}".encode()
             ).hexdigest()
 
-            existing = (
-                self._client.table("jobs")
-                .select("id")
-                .eq("content_hash", row["content_hash"])
-                .limit(1)
-                .execute()
-            )
+            job_url = row.get("job_url")
+            existing = None
+            if job_url:
+                existing = (
+                    self._client.table("jobs")
+                    .select("id")
+                    .eq("job_url", job_url)
+                    .limit(1)
+                    .execute()
+                )
+            if not existing or not existing.data:
+                existing = (
+                    self._client.table("jobs")
+                    .select("id")
+                    .eq("content_hash", row["content_hash"])
+                    .limit(1)
+                    .execute()
+                )
 
-            if existing.data:
+            if existing and existing.data:
                 job_id = existing.data[0]["id"]
                 self._client.table("jobs").update(row).eq("id", job_id).execute()
             else:
@@ -135,7 +146,7 @@ class DatabaseService:
                 logger.debug("Upserted job: %s → %s", job.get("title", "?"), job_id)
             return job_id
         except Exception as e:
-            self._log_err(f"Failed to upsert job '{job.get('p_title', '?')}'", e)
+            logger.warning("Failed to upsert job '%s': %s", job.get('p_title', '?'), e)
             return None
 
     def attach_skills(self, job_id: str, skill_slugs: List[str]) -> None:

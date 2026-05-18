@@ -166,6 +166,7 @@ class ProgramathorScraper(BaseScraper):
 
     async def fetch_raw(self) -> List[Dict[str, Any]]:
         jobs_data = []
+        seen_urls: set = set()
 
         async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT / 1000) as client:
             for page in range(1, PROGRAMATHOR_MAX_PAGES + 1):
@@ -184,8 +185,17 @@ class ProgramathorScraper(BaseScraper):
                     logger.info("No more jobs found, stopping.")
                     break
 
-                jobs_data.extend(page_jobs)
-                logger.info("Found %d jobs on page %d", len(page_jobs), page)
+                new_in_page = 0
+                for j in page_jobs:
+                    u = j.get("detail_url", "")
+                    if u and u in seen_urls:
+                        continue
+                    if u:
+                        seen_urls.add(u)
+                    jobs_data.append(j)
+                    new_in_page += 1
+
+                logger.info("Found %d jobs on page %d (%d new)", len(page_jobs), page, new_in_page)
 
         logger.info("Total raw job entries from listing: %d", len(jobs_data))
 
@@ -200,15 +210,26 @@ class ProgramathorScraper(BaseScraper):
                     detail_url = job.get("detail_url", "")
                     if not detail_url:
                         return job
-                    try:
-                        resp = await client.get(detail_url, headers=HEADERS)
-                        resp.raise_for_status()
-                        return self._parse_detail_page(resp.text, job)
-                    except Exception as e:
-                        logger.warning(
-                            "Failed to fetch detail %s: %s", detail_url, e
-                        )
-                        return job
+                    for attempt in range(2):
+                        try:
+                            resp = await client.get(detail_url, headers=HEADERS)
+                            resp.raise_for_status()
+                            return self._parse_detail_page(resp.text, job)
+                        except httpx.HTTPStatusError as e:
+                            if attempt == 0 and e.response.status_code >= 500:
+                                logger.debug("Retrying %s (attempt 2)...", detail_url)
+                                await asyncio.sleep(1)
+                                continue
+                            logger.warning(
+                                "Failed to fetch detail %s: %s", detail_url, e
+                            )
+                            return job
+                        except Exception as e:
+                            logger.warning(
+                                "Failed to fetch detail %s: %s", detail_url, e
+                            )
+                            return job
+                    return job
 
             tasks = [fetch_one(job) for job in jobs_data]
             results = await asyncio.gather(*tasks)

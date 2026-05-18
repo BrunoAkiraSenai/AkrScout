@@ -43,8 +43,32 @@ class RemotiveScraper(BaseScraper):
     def _random_delay(self) -> float:
         return random.uniform(REMOTIVE_DELAY_MIN, REMOTIVE_DELAY_MAX)
 
+    def _is_relevant_role(self, title: str) -> bool:
+        t = title.lower()
+        keywords = [
+            "developer", "engineer", "engineering", "architect",
+            "devops", "sre", "sysadmin", "system admin",
+            "data scientist", "data engineer", "data analyst", "data",
+            "machine learning", "deep learning", "ai engineer", "ai",
+            "full stack", "fullstack", "frontend", "front-end", "front end",
+            "backend", "back-end", "back end",
+            "software", "programmer", "programming",
+            "tech lead", "technical lead", "lead engineer", "lead developer",
+            "staff engineer", "principal engineer",
+            "site reliability", "platform engineer",
+            "cloud engineer", "security engineer", "infrastructure",
+            "qa engineer", "test engineer", "automation engineer",
+            "mobile developer", "ios developer", "android developer",
+            "react", "angular", "vue", "node", "python", "java",
+            "blockchain", "crypto",
+            "scrum master", "product manager", "product owner",
+            "ux engineer", "ui engineer",
+        ]
+        return any(kw in t for kw in keywords)
+
     async def fetch_raw(self) -> List[Dict[str, Any]]:
         self._collected = []
+        seen_urls: set = set()
         logger.info("Remotive scraping started (%d categories)", len(REMOTIVE_CATEGORIES))
 
         async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT / 1000) as client:
@@ -70,8 +94,17 @@ class RemotiveScraper(BaseScraper):
                     if len(self._collected) >= REMOTIVE_MAX_JOBS:
                         break
 
+                    job_url = (j.get("url") or "").strip()
+                    if not job_url or job_url in seen_urls:
+                        continue
+                    seen_urls.add(job_url)
+
                     title = (j.get("title") or "").strip()
                     if not title or len(title) < 3:
+                        continue
+
+                    if not self._is_relevant_role(title):
+                        logger.debug("Skipping non-tech role: %s", title)
                         continue
 
                     location = (j.get("candidate_required_location") or "").strip()
@@ -108,7 +141,7 @@ class RemotiveScraper(BaseScraper):
                         "salary_min": salary_min,
                         "salary_max": salary_max,
                         "salary_text": salary_text,
-                        "detail_url": j.get("url", ""),
+                        "detail_url": job_url,
                         "posted_at": j.get("publication_date"),
                         "tags": tags,
                         "job_type": j.get("job_type"),

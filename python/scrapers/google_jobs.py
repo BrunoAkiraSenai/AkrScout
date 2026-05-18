@@ -424,7 +424,7 @@ class GoogleJobsScraper(BaseScraper):
                 found_elements = 0
                 found_selector = ""
                 for sel in job_selectors:
-                    count = await page.evaluate(f"document.querySelectorAll('{sel}').length")
+                    count = await page.locator(sel).count()
                     logger.info("PW: selector '%s' found %d elements", sel, count)
                     if count > found_elements:
                         found_elements = count
@@ -434,7 +434,7 @@ class GoogleJobsScraper(BaseScraper):
                 await page.screenshot(path=str(debug_dir / f"03_before_scroll_{safe_query}.png"))
 
                 for i in range(5):
-                    await page.evaluate(f"window.scrollBy(0, {400 + i * 200})")
+                    await page.evaluate("(y) => window.scrollBy(0, y)", 400 + i * 200)
                     await asyncio.sleep(1.5)
                 await asyncio.sleep(3)
                 await page.screenshot(path=str(debug_dir / f"04_after_scroll_{safe_query}.png"))

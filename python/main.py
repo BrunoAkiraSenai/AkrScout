@@ -4,9 +4,7 @@ import sys
 
 from analytics.tracker import PipelineTracker
 from scrapers.programathor import ProgramathorScraper
-from scrapers.greenhouse import GreenhouseScraper
 from scrapers.remotive import RemotiveScraper
-from scrapers.weworkremotely import WeWorkRemotelyScraper
 from services.supabase import DatabaseService
 from utils.logger import setup_logger
 
@@ -14,9 +12,7 @@ logger = setup_logger()
 
 SCRAPERS = [
     ProgramathorScraper,
-    GreenhouseScraper,
     RemotiveScraper,
-    WeWorkRemotelyScraper,
 ]
 
 

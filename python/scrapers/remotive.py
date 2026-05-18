@@ -75,6 +75,15 @@ class RemotiveScraper(BaseScraper):
                         continue
 
                     location = (j.get("candidate_required_location") or "").strip()
+                    loc_lower = location.lower()
+                    brazil_ok = any(k in loc_lower for k in [
+                        "worldwide", "anywhere", "global", "remote",
+                        "americas", "latin america", "latam", "south america",
+                        "brazil", "brasil",
+                    ])
+                    if not brazil_ok:
+                        continue
+
                     remote = True
 
                     company = (j.get("company_name") or "").strip()

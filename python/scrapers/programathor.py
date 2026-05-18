@@ -46,55 +46,74 @@ class ProgramathorScraper(BaseScraper):
         page_jobs = []
 
         for a in cards:
-            cell = a.find("div", class_="cell-list-content")
-            if not cell:
-                continue
-
             job_path = a.get("href", "")
             if not job_path:
                 continue
 
-            h3 = cell.find("h3")
+            if "/page/" in job_path or "contract_type=" in job_path:
+                continue
+
+            h3 = a.find("h3")
             if not h3:
                 continue
-            if self._is_expired(h3):
-                logger.debug("Skipping expired job on listing page")
+
+            title = h3.get_text(strip=True)
+            if not title or len(title) < 3:
                 continue
-            title = self._extract_title(h3)
+            title = self._clean_title(title)
             detail_url = urljoin(BASE_URL, job_path)
 
-            icon_div = cell.find("div", class_="cell-list-content-icon")
             company = ""
             location = ""
             salary_text = ""
             seniority = ""
             emp_type = ""
-
-            if icon_div:
-                for span in icon_div.find_all("span"):
-                    text = span.get_text(strip=True)
-                    i = span.find("i")
-                    if i:
-                        iclass = " ".join(i.get("class", []))
-                        if "fa-briefcase" in iclass:
-                            company = text
-                        elif "fa-map-marker" in iclass:
-                            location = text
-                        elif "fa-chart-bar" in iclass:
-                            seniority = text
-                        elif "fa-file-alt" in iclass:
-                            emp_type = text
-                    elif "R$" in text:
-                        salary_text = text
-
             tags = []
-            for tdiv in cell.find_all("div"):
-                cls = tdiv.get("class", [])
-                if "tag-list" in cls:
-                    for tag in tdiv.find_all("span", class_="tag"):
-                        tags.append(tag.get_text(strip=True))
+            remote = False
 
-            remote = "remoto" in location.lower()
+            cell = a.find("div", class_="cell-list-content")
+            if cell:
+                icon_div = cell.find("div", class_="cell-list-content-icon")
+                if icon_div:
+                    for span in icon_div.find_all("span"):
+                        text = span.get_text(strip=True)
+                        i = span.find("i")
+                        if i:
+                            iclass = " ".join(i.get("class", []))
+                            if "fa-briefcase" in iclass:
+                                company = text
+                            elif "fa-map-marker" in iclass:
+                                location = text
+                            elif "fa-chart-bar" in iclass:
+                                seniority = text
+                            elif "fa-file-alt" in iclass:
+                                emp_type = text
+                        elif "R$" in text:
+                            salary_text = text
+                for tdiv in cell.find_all("div"):
+                    cls = tdiv.get("class", [])
+                    if "tag-list" in cls:
+                        for tag in tdiv.find_all("span", class_="tag"):
+                            tags.append(tag.get_text(strip=True))
+
+            if not company:
+                all_text = a.get_text(strip=True)
+                parts = [p.strip() for p in all_text.split(title) if p.strip()]
+                if parts:
+                    raw = parts[0]
+                    import re as _re
+                    match = _re.search(r'^(.*?)(?:Remoto|Presencial|Híbrido|Hibrido|São Paulo|Belo Horizonte|Rio de Janeiro|Salvador|Brasília|Curitiba|Porto Alegre|Fortaleza|Recife|Florianópolis|Vitória)', raw)
+                    if match:
+                        company = match.group(1).strip()
+                    else:
+                        company = raw[:60].strip()
+
+            if not location:
+                loc_match = _re.search(r'(Remoto|Presencial|Híbrido|Hibrido)\s*[-–—]?\s*([A-Za-zÀ-ü\s]+)', a.get_text(strip=True))
+                if loc_match:
+                    location = loc_match.group(0).strip()
+
+            remote = "remoto" in location.lower() or "remoto" in title.lower()
 
             page_jobs.append({
                 "title": title,

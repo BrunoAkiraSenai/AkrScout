@@ -47,7 +47,7 @@ class GoogleJobsScraper(BaseScraper):
 
     async def _search_query(self, query: str) -> List[Dict[str, Any]]:
         params = {
-            "q": f"{query} brasil",
+            "q": f"{query} brasil vaga",
             "ibp": "htl;jobs",
             "gl": GOOGLE_JOBS_COUNTRY,
             "hl": GOOGLE_JOBS_LANG,
@@ -65,62 +65,102 @@ class GoogleJobsScraper(BaseScraper):
         try:
             async with AsyncSession(impersonate="chrome124") as session:
                 resp = await session.get(url, timeout=30, headers=headers)
+                logger.debug("Google response status=%d size=%d for '%s'", resp.status_code, len(resp.text), query)
+
                 if resp.status_code != 200:
-                    logger.warning("Google Jobs returned status %d for '%s'", resp.status_code, query)
+                    logger.warning("Google returned status %d for '%s'", resp.status_code, query)
                     return []
-                return self._parse_results(resp.text, query)
+
+                text = resp.text
+                preview = text[:3000].replace('\n', ' ')[:600]
+                logger.info("Google HTML preview: %s", preview)
+
+                lower = text.lower()
+                if "captcha" in lower or "unusual traffic" in lower:
+                    logger.warning("Google CAPTCHA/blocking detected for '%s'", query)
+                    return []
+                if "before you continue" in lower or "consent" in lower or "cookies" in lower:
+                    logger.warning("Google cookie consent page for '%s'", query)
+                    return []
+                if "enable javascript" in lower or "javascript" in lower:
+                    logger.warning("Google requires JavaScript for '%s'", query)
+
+                json_ld_count = len(text.split('"application/ld+json"'))
+                logger.debug("JSON-LD script tags found: %d", json_ld_count - 1)
+
+                return self._parse_results(text, query)
         except Exception as e:
             logger.warning("Google Jobs request failed for '%s': %s", query, e)
             return []
 
     def _parse_results(self, html: str, query: str) -> List[Dict[str, Any]]:
-        try:
-            data = self._extract_json_ld(html)
-            if data:
-                return data
-        except Exception as e:
-            logger.debug("JSON-LD extraction failed: %s", e)
+        total_len = len(html)
+        has_json_ld = 'application/ld+json' in html
+        has_jobs_class = 'gws-plugins-horizon-jobs' in html
+
+        logger.debug("Parsing: size=%d, has_json_ld=%s, has_jobs_class=%s", total_len, has_json_ld, has_jobs_class)
+
+        if has_json_ld:
+            try:
+                data = self._extract_json_ld(html)
+                if data:
+                    logger.info("JSON-LD extraction found %d jobs for '%s'", len(data), query)
+                    return data
+            except Exception as e:
+                logger.debug("JSON-LD extraction failed: %s", e)
 
         try:
             data = self._extract_html_bs4(html)
             if data:
+                logger.info("HTML extraction found %d jobs for '%s'", len(data), query)
                 return data
         except Exception as e:
             logger.debug("BeautifulSoup extraction failed: %s", e)
 
+        logger.info("No jobs found for '%s' (size=%d, json_ld=%s)", query, total_len, has_json_ld)
         return []
 
     def _extract_json_ld(self, html: str) -> List[Dict[str, Any]]:
         cards = []
         soup = BeautifulSoup(html, "lxml")
-        for script in soup.find_all("script", type="application/ld+json"):
+        scripts = soup.find_all("script", type="application/ld+json")
+        logger.debug("Found %d JSON-LD script tags", len(scripts))
+
+        for script in scripts:
             try:
-                data = json.loads(script.string)
-            except (json.JSONDecodeError, TypeError):
+                content = script.string
+                if not content or not content.strip():
+                    continue
+                data = json.loads(content)
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.debug("JSON-LD parse error: %s", e)
                 continue
 
             items = []
             if isinstance(data, dict):
                 if data.get("@type") == "ItemList":
                     items = data.get("itemListElement", [])
-                    items = [it.get("item", it) for it in items]
+                    items = [it.get("item", it) for it in items] if items else data.get("items", [])
                 elif data.get("@type") == "JobPosting":
                     items = [data]
-                elif data.get("@type") == "ItemList" and "items" in data:
-                    items = data.get("items", [])
+
+            logger.debug("JSON-LD block with %d potential items (type=%s)", len(items),
+                         data.get("@type", "unknown") if isinstance(data, dict) else "list")
 
             for job in items:
                 if not isinstance(job, dict):
                     continue
-                if job.get("@type") != "JobPosting":
+                if job.get("@type") not in ("JobPosting", "Job"):
                     continue
                 try:
                     parsed = self._parse_ld_job(job)
                     if parsed:
                         cards.append(parsed)
-                except Exception:
+                except Exception as e:
+                    logger.debug("JSON-LD job parse error: %s", e)
                     continue
 
+        logger.debug("JSON-LD extracted %d jobs total", len(cards))
         return cards
 
     def _parse_ld_job(self, job: dict) -> Optional[Dict[str, Any]]:

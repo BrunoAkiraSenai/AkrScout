@@ -349,6 +349,10 @@ class GoogleJobsScraper(BaseScraper):
 
     async def _search_with_playwright(self, query: str) -> List[Dict[str, Any]]:
         from playwright.async_api import async_playwright
+        from pathlib import Path
+
+        debug_dir = Path("logs") / "google-jobs-debug"
+        debug_dir.mkdir(parents=True, exist_ok=True)
 
         params = {
             "q": f"{query} brasil vaga",
@@ -358,6 +362,7 @@ class GoogleJobsScraper(BaseScraper):
         }
         url = f"https://www.google.com/search?{urlencode(params)}"
         logger.info("Playwright Google Jobs URL: %s", url)
+        safe_query = query.replace(" ", "_")
 
         async with async_playwright() as pw:
             launch_opts = {
@@ -370,9 +375,11 @@ class GoogleJobsScraper(BaseScraper):
             try:
                 launch_opts["channel"] = "chrome"
                 browser = await pw.chromium.launch(**launch_opts)
+                logger.info("PW browser: system Chrome")
             except Exception:
                 launch_opts.pop("channel", None)
                 browser = await pw.chromium.launch(**launch_opts)
+                logger.info("PW browser: bundled Chromium")
 
             try:
                 context = await browser.new_context(
@@ -381,28 +388,154 @@ class GoogleJobsScraper(BaseScraper):
                     locale="pt-BR",
                     timezone_id="America/Sao_Paulo",
                 )
+                await context.add_init_script("""
+                    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+                    Object.defineProperty(navigator, 'plugins', { get: () => [1,2,3,4,5] });
+                    Object.defineProperty(navigator, 'languages', { get: () => ['pt-BR','pt','en-US'] });
+                    window.chrome = { runtime: {}, loadTimes: () => {}, csi: () => {}, app: {} };
+                """)
+
                 page = await context.new_page()
+
+                logger.info("PW: navigating...")
                 await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                await page.screenshot(path=str(debug_dir / f"01_after_load_{safe_query}.png"))
+                logger.info("PW: page loaded, title='%s'", await page.title())
 
+                html_after_load = await page.content()
+                (debug_dir / f"html_after_load_{safe_query}.html").write_text(html_after_load, encoding="utf-8")
+                logger.info("PW: HTML after load: %d bytes", len(html_after_load))
+
+                logger.info("PW: waiting for network idle...")
                 try:
-                    await page.wait_for_selector(
-                        "div[class*='job-card'], div[id*='jobs'], div[data-docid], div[jsname]",
-                        timeout=15000
-                    )
-                except Exception:
-                    pass
+                    await page.wait_for_load_state("networkidle", timeout=30000)
+                except Exception as e:
+                    logger.warning("PW: networkidle timeout: %s", e)
+                await page.screenshot(path=str(debug_dir / f"02_after_networkidle_{safe_query}.png"))
 
+                logger.info("PW: waiting for job results rendering...")
+                await asyncio.sleep(5)
+
+                job_selectors = [
+                    "div[data-docid]", "div[class*='job']", "div[class*='gws-plugins-horizon-jobs']",
+                    "div[jscontroller]", "div[jsname]", "div[role='list']", "div[data-ved]",
+                    "h3", "a[href*='/jobs']",
+                ]
+                found_elements = 0
+                found_selector = ""
+                for sel in job_selectors:
+                    count = await page.evaluate(f"document.querySelectorAll('{sel}').length")
+                    logger.info("PW: selector '%s' found %d elements", sel, count)
+                    if count > found_elements:
+                        found_elements = count
+                        found_selector = sel
+
+                logger.info("PW: best selector: '%s' with %d elements", found_selector, found_elements)
+                await page.screenshot(path=str(debug_dir / f"03_before_scroll_{safe_query}.png"))
+
+                for i in range(5):
+                    await page.evaluate(f"window.scrollBy(0, {400 + i * 200})")
+                    await asyncio.sleep(1.5)
                 await asyncio.sleep(3)
+                await page.screenshot(path=str(debug_dir / f"04_after_scroll_{safe_query}.png"))
 
-                for _ in range(3):
-                    await page.evaluate("window.scrollBy(0, 500)")
-                    await asyncio.sleep(1)
+                logger.info("PW: extracting job data from DOM...")
+                cards = await page.evaluate("""
+                    () => {
+                        const results = [];
+                        const seen = new Set();
 
-                html = await page.content()
-                logger.debug("Playwright HTML size: %d for '%s'", len(html), query)
+                        const extractors = [
+                            () => {
+                                const cards = document.querySelectorAll('[data-docid]');
+                                return Array.from(cards).map(c => {
+                                    const titleEl = c.querySelector('h3, h2, [class*="title"], a');
+                                    const title = titleEl ? (titleEl.innerText || titleEl.textContent || '').trim() : '';
+                                    if (!title || title.length < 3) return null;
+                                    if (seen.has(title)) return null;
+                                    seen.add(title);
 
-                cards = self._parse_results(html, query)
-                logger.info("Playwright found %d jobs for '%s'", len(cards), query)
+                                    const companyEl = c.querySelector('[class*="company"], [class*="employer"], [class*="Qk80vf"]');
+                                    const company = companyEl ? companyEl.innerText.trim() : '';
+
+                                    const locEl = c.querySelector('[class*="location"], [class*="loc"], [class*="ragvQd"]');
+                                    const location = locEl ? locEl.innerText.trim() : '';
+
+                                    const salaryEl = c.querySelector('[class*="salary"], [class*="QYpI6c"]');
+                                    const salaryText = salaryEl ? salaryEl.innerText.trim() : '';
+
+                                    const dateEl = c.querySelector('[class*="date"], [class*="K5hUy"], [class*="age"]');
+                                    const dateText = dateEl ? dateEl.innerText.trim() : '';
+
+                                    const link = c.querySelector('a');
+                                    const url = link ? (link.href || '') : '';
+
+                                    return { title, company, location, salaryText, dateText, url };
+                                }).filter(x => x !== null);
+                            },
+                            () => {
+                                const items = document.querySelectorAll('h3, h2');
+                                return Array.from(items).map(h => {
+                                    const title = (h.innerText || h.textContent || '').trim();
+                                    if (!title || title.length < 3 || seen.has(title)) return null;
+                                    seen.add(title);
+
+                                    const container = h.closest('div,li') || h.parentElement;
+                                    const allText = container ? container.innerText : '';
+                                    const lines = allText.split('\\n').map(l => l.trim()).filter(l => l);
+                                    const company = lines.find(l => l !== title && l.length > 1 && l.length < 80) || '';
+
+                                    const link = (container || h).querySelector('a');
+                                    const url = link ? link.href : '';
+
+                                    return { title, company, location: '', salaryText: '', dateText: '', url };
+                                }).filter(x => x !== null);
+                            },
+                            () => {
+                                const scripts = document.querySelectorAll('script');
+                                const results = [];
+                                for (const s of scripts) {
+                                    if (!s.textContent) continue;
+                                    const matches = s.textContent.match(/"jobTitle":"([^"]+)"/g);
+                                    if (!matches) continue;
+                                    for (const m of matches) {
+                                        try {
+                                            const data = JSON.parse('{' + m.replace(/"jobTitle"/g, '"title"') + '}');
+                                            const title = data.title;
+                                            if (!title || seen.has(title)) continue;
+                                            seen.add(title);
+                                            results.push({ title, company: '', location: '', salaryText: '', dateText: '', url: '' });
+                                        } catch(e) {}
+                                    }
+                                }
+                                return results;
+                            }
+                        ];
+
+                        for (const extract of extractors) {
+                            try {
+                                const extracted = extract();
+                                if (extracted.length > 0) {
+                                    results.push(...extracted);
+                                    break;
+                                }
+                            } catch(e) {}
+                        }
+                        return results;
+                    }
+                """)
+                logger.info("PW: page.evaluate extracted %d cards", len(cards))
+
+                for card in cards:
+                    card["remote"] = any(w in card.get("title", "").lower()
+                                        for w in ["remoto", "remote", "home office", "home-office"])
+
+                await page.screenshot(path=str(debug_dir / f"05_final_{safe_query}.png"))
+
+                if not cards:
+                    body_text = await page.evaluate("document.body.innerText.substring(0, 2000)")
+                    logger.info("PW: page body preview: %s", body_text[:500].replace('\\n', ' '))
+
                 return cards
             finally:
                 await browser.close()

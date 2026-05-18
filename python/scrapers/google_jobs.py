@@ -475,6 +475,26 @@ class GoogleJobsScraper(BaseScraper):
 
                 logger.info("PW: extracting job data from DOM...")
 
+                container_info = await page.evaluate("""
+                    () => {
+                        const info = [];
+                        // Check for role=list containers
+                        document.querySelectorAll('[role="list"], [role="listbox"], [role="feed"]').forEach((el, i) => {
+                            const html = el.innerHTML.substring(0, 300).replace(/<[^>]+>/g,' ').replace(/\\s+/g,' ').trim();
+                            info.push({ type: 'role-list', index: i, children: el.children.length, preview: html.substring(0, 200) });
+                        });
+                        // Check for main content
+                        document.querySelectorAll('#center_col, [role="main"], #main').forEach((el, i) => {
+                            const html = el.innerHTML.substring(0, 300).replace(/<[^>]+>/g,' ').replace(/\\s+/g,' ').trim();
+                            info.push({ type: 'main', index: i, children: el.children.length, preview: html.substring(0, 200) });
+                        });
+                        return info;
+                    }
+                """)
+                for c in container_info:
+                    logger.info("PW: container %s [%d] children=%d preview=%s",
+                                c["type"], c["index"], c["children"], c["preview"][:150])
+
                 ui_keywords = ["compartilhar", "facebook", "copiar link", "ferramentas",
                                "anúncio", "anuncio", "seguir", "vagas salvas", "empregos",
                                "clique para copiar", "twitter", "linkedin", "whatsapp",
@@ -485,54 +505,32 @@ class GoogleJobsScraper(BaseScraper):
                         const BAD = ["compartilhar","facebook","copiar link","ferramentas",
                                      "anúncio","anuncio","seguir","vagas salvas","empregos",
                                      "clique","twitter","linkedin","whatsapp","denunciar",
-                                     "reportar","candidatar","candidate","salvar"];
+                                     "reportar","candidatar","candidate","salvar",
+                                     "videos","vÍdeos","notÍcias","shopping","modo ia",
+                                     "finanças","modo","ia","imagens","maps","maps",
+                                     "todas","notícias","shopping","videos","livros",
+                                     "voos","finance"];
 
-                        const isBadTitle = (t) => {
-                            const l = (t || '').toLowerCase().trim();
-                            if (!l || l.length < 4) return true;
-                            return BAD.some(k => l.includes(k));
-                        };
-
-                        // Find containers with repeated card-like children
-                        const containers = [];
-                        const candidates = new Set();
-                        const allDivs = document.querySelectorAll('div, ul, ol');
-
-                        for (const el of allDivs) {
-                            const children = Array.from(el.children).filter(c => c.tagName === 'DIV' || c.tagName === 'LI');
-                            if (children.length >= 3 && children.length <= 100) {
-                                // Check if children have similar structure (at least have an <a> or heading)
-                                const withLink = children.filter(c => c.querySelector('a'));
-                                if (withLink.length >= 2) {
-                                    containers.push({
-                                        el: el,
-                                        children: children,
-                                        withLink: withLink.length,
-                                        total: children.length,
-                                    });
-                                }
-                            }
-                        }
-
-                        // Pick the container with the most linked children (likely the job card list)
-                        containers.sort((a, b) => b.withLink - a.withLink);
-
-                        const results = [];
-                        const seen = new Set();
-
-                        for (const c of containers.slice(0, 3)) {
-                            for (const card of c.children) {
+                        function scrapeCards(container) {
+                            const cards = [];
+                            const seen = new Set();
+                            const items = container.children;
+                            for (const item of items) {
                                 try {
-                                    const titleEl = card.querySelector('h3, h2, [class*="title"], a[href*="http"]');
+                                    const titleEl = item.querySelector('h3, h2, [class*="title"], a[href*="http"]:not([class*="nav"])');
                                     if (!titleEl) continue;
                                     const title = (titleEl.innerText || titleEl.textContent || '').trim();
-                                    if (isBadTitle(title) || seen.has(title)) continue;
+                                    if (!title || title.length < 5 || seen.has(title)) continue;
+                                    const ltitle = title.toLowerCase();
+                                    if (BAD.some(k => ltitle.includes(k))) continue;
+                                    if (ltitle.includes('jobs') || ltitle.includes('vagas') || ltitle.includes('empregos')) continue;
                                     seen.add(title);
 
-                                    const link = card.querySelector('a[href*="http"]');
+                                    const link = item.querySelector('a[href*="http"]');
                                     const url = link ? link.href : '';
+                                    if (!url) continue;
 
-                                    const allText = card.innerText || '';
+                                    const allText = item.innerText || '';
                                     const lines = allText.split('\\n').map(l => l.trim()).filter(l => l && l !== title);
                                     let company = '';
                                     let location = '';
@@ -541,18 +539,109 @@ class GoogleJobsScraper(BaseScraper):
                                         else if (!location && line.length > 1 && line.length < 80) location = line;
                                     }
 
-                                    results.push({ title, company, location, salaryText: '', dateText: '', url });
-                                    if (results.length >= 50) break;
+                                    cards.push({ title, company, location, salaryText: '', dateText: '', url });
                                 } catch(e) {}
                             }
-                            if (results.length > 0) break;
+                            return cards;
                         }
+
+                        // Strategy 1: Find the container by looking for Google Jobs-specific widgets or data attributes
+                        const candidates = [];
+
+                        // Look for elements with role="list" or role="feed" (standard for repeated content)
+                        const lists = document.querySelectorAll('[role="list"], [role="listbox"], [role="feed"]');
+                        for (const list of lists) {
+                            const children = Array.from(list.children).filter(c => c.tagName !== 'SCRIPT' && c.tagName !== 'STYLE');
+                            if (children.length >= 2) {
+                                candidates.push({ el: list, type: 'role', count: children.length });
+                            }
+                        }
+
+                        // Look for elements with gws-plugins-horizon-jobs
+                        const gwsEls = document.querySelectorAll('gws-plugins-horizon-jobs, [class*="gws-plugins-horizon-jobs"]');
+                        for (const g of gwsEls) {
+                            candidates.push({ el: g, type: 'gws', count: g.children.length });
+                        }
+
+                        // Look for elements with data-docid (Google's card identifier)
+                        const docidParents = new Set();
+                        document.querySelectorAll('[data-docid]').forEach(el => {
+                            docidParents.add(el.parentElement);
+                        });
+                        for (const parent of docidParents) {
+                            if (parent && parent.children.length >= 2) {
+                                candidates.push({ el: parent, type: 'docid', count: parent.children.length });
+                            }
+                        }
+
+                        // Try each candidate container
+                        const results = [];
+                        const tried = new Set();
+                        for (const c of candidates) {
+                            if (tried.has(c.el)) continue;
+                            tried.add(c.el);
+                            const found = scrapeCards(c.el);
+                            if (found.length > 0) {
+                                results.push(...found);
+                                break;
+                            }
+                        }
+
+                        // Strategy 2: Find main content area by looking for the center panel
+                        if (!results.length) {
+                            const centerAreas = document.querySelectorAll('#center_col, #main, #rcnt, [role="main"]');
+                            for (const area of centerAreas) {
+                                const lists = area.querySelectorAll('[role="list"], [role="listbox"]');
+                                for (const list of lists) {
+                                    const found = scrapeCards(list);
+                                    if (found.length > 0) {
+                                        results.push(...found);
+                                        break;
+                                    }
+                                }
+                                if (results.length) break;
+                            }
+                        }
+
+                        // Strategy 3: Last resort - any container whose children have job-like links
+                        if (!results.length) {
+                            const allContainers = document.querySelectorAll('div, ul, ol');
+                            const scored = [];
+                            for (const el of allContainers) {
+                                const children = Array.from(el.children).filter(c => c.tagName === 'DIV' || c.tagName === 'LI');
+                                if (children.length < 3 || children.length > 80) continue;
+                                const jobLinks = children.filter(c => {
+                                    const a = c.querySelector('a[href*="job"], a[href*="vaga"], a[href*="career"]');
+                                    return !!a;
+                                });
+                                if (jobLinks.length >= 2) {
+                                    scored.push({ el, score: jobLinks.length, total: children.length });
+                                }
+                            }
+                            scored.sort((a, b) => b.score - a.score);
+                            for (const s of scored.slice(0, 3)) {
+                                // Check if this container looks like job cards (not UI tabs)
+                                const sampleText = (s.el.innerText || '').toLowerCase();
+                                const jobIndicators = ['desenvolvedor','analista','engenheiro','salário','empresa','remoto','presencial','são paulo','rio de janeiro'];
+                                const hasJobIndicator = jobIndicators.some(k => sampleText.includes(k));
+                                if (hasJobIndicator) {
+                                    const found = scrapeCards(s.el);
+                                    if (found.length > 0) {
+                                        results.push(...found);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
                         return results;
                     }
                 """)
 
+                logger.info("PW: strategy 1 extracted %d cards", len(cards))
+
                 if not cards:
-                    logger.info("PW: container-based extraction found 0, trying structured data...")
+                    logger.info("PW: container strategies found 0, trying structured data...")
                     cards = await page.evaluate("""
                         () => {
                             const results = [];

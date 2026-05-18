@@ -15,6 +15,17 @@ PROGRAMATHOR_BASE_URL = "https://programathor.com.br"
 PROGRAMATHOR_MAX_PAGES = 3
 PROGRAMATHOR_CONCURRENCY = 5
 
+WWR_CATEGORIES = [
+    "remote-full-stack-programming-jobs",
+    "remote-front-end-programming-jobs",
+    "remote-back-end-programming-jobs",
+    "remote-software-developer-jobs",
+    "remote-devops-sysadmin-jobs",
+]
+WWR_MAX_JOBS = 50
+WWR_DELAY_MIN = 0.5
+WWR_DELAY_MAX = 1.5
+
 REMOTIVE_API_URL = "https://remotive.com/api/remote-jobs"
 REMOTIVE_CATEGORIES = ["software-dev", "devops", "data", "artificial-intelligence"]
 REMOTIVE_MAX_JOBS = 50

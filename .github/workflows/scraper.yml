@@ -78,8 +78,8 @@ jobs:
           echo "::group::Workspace Check"
           echo "pwd: $(pwd)"
           echo "scraper version:"
-          head -5 scrapers/google_jobs.py | grep -i "import\|version\|modified" || true
-          git log -1 --format="Last modified: %ai | %s" -- scrapers/google_jobs.py
+          head -5 scrapers/programathor.py | grep -i "import\|version\|modified" || true
+          git log -1 --format="Last modified: %ai | %s" -- scrapers/programathor.py
           echo "requirements diff from default branch:"
           diff <(git show HEAD~1:requirements.txt 2>/dev/null || echo "") requirements.txt 2>/dev/null && echo "(no changes)" || true
           echo "::endgroup::"
@@ -103,24 +103,7 @@ jobs:
           pip install -r requirements.txt
 
       # ------------------------------------------------------------------
-      # 6. Verify system Chrome (Playwright channel="chrome")
-      # ------------------------------------------------------------------
-      - name: Verify Chrome installation
-        run: |
-          echo "::group::Chrome Check"
-          which google-chrome || which google-chrome-stable || echo "WARNING: Chrome not found in PATH"
-          google-chrome --version 2>/dev/null || google-chrome-stable --version 2>/dev/null || echo "WARNING: chrome --version failed"
-          echo "::endgroup::"
-
-      # ------------------------------------------------------------------
-      # 7. Install Playwright system deps (browser downloaded by Playwright)
-      # ------------------------------------------------------------------
-      - name: Install Playwright dependencies
-        run: |
-          playwright install-deps chromium
-
-      # ------------------------------------------------------------------
-      # 7. Inject environment variables from GitHub Secrets
+      # 6. Inject environment variables from GitHub Secrets
       # ------------------------------------------------------------------
       - name: Create .env file
         run: |
@@ -171,8 +154,6 @@ jobs:
           name: pipeline-artifacts-${{ github.run_id }}
           path: |
             python/logs/
-            python/logs/google-jobs-debug/
-            python/logs/indeed-debug/
           retention-days: 7
           if-no-files-found: warn
 

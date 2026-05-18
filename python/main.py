@@ -4,7 +4,6 @@ import sys
 
 from analytics.tracker import PipelineTracker
 from scrapers.programathor import ProgramathorScraper
-from scrapers.google_jobs import GoogleJobsScraper
 from services.supabase import DatabaseService
 from utils.logger import setup_logger
 
@@ -12,7 +11,6 @@ logger = setup_logger()
 
 SCRAPERS = [
     ProgramathorScraper,
-    GoogleJobsScraper,
 ]
 
 

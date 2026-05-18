@@ -78,7 +78,7 @@ export default function Register() {
 
       <button
         type="button"
-        onClick={() => navigate(-1)}
+        onClick={() => navigate('/')}
         className="flex items-center gap-1.5 text-xs text-slate-500 transition-colors hover:text-indigo-400"
       >
         <ArrowLeft className="h-3.5 w-3.5" />

@@ -416,21 +416,55 @@ class GoogleJobsScraper(BaseScraper):
                 logger.info("PW: waiting for job results rendering...")
                 await asyncio.sleep(5)
 
+                logger.info("PW: scanning DOM structure...")
+                dom_scan = await page.evaluate("""
+                    () => {
+                        const results = {};
+                        const all = document.querySelectorAll('*');
+                        for (const el of all) {
+                            const tag = el.tagName.toLowerCase();
+                            const cls = el.className || '';
+                            const hasDataDocid = el.hasAttribute('data-docid');
+                            const hasJsController = el.hasAttribute('jscontroller');
+                            if (!results[tag]) results[tag] = { count: 0, classes: new Set(), dataDocid: false };
+                            results[tag].count++;
+                            if (cls && typeof cls === 'string') {
+                                cls.split(/\\s+/).forEach(c => { if (c) results[tag].classes.add(c); });
+                            }
+                            if (hasDataDocid) results[tag].dataDocid = true;
+                        }
+                        const summary = {};
+                        for (const [tag, info] of Object.entries(results)) {
+                            summary[tag] = {
+                                count: info.count,
+                                hasDataDocid: info.dataDocid,
+                                classes: Array.from(info.classes).slice(0, 10),
+                            };
+                        }
+                        return summary;
+                    }
+                """)
+                for tag, info in sorted(dom_scan.items(), key=lambda x: -x[1]["count"]):
+                    if info["count"] > 1 or info["hasDataDocid"] or info["classes"]:
+                        logger.info("PW: DOM <%s> count=%d hasDocid=%s classes=%s",
+                                    tag, info["count"], info["hasDataDocid"], info["classes"][:5])
+
                 job_selectors = [
                     "div[data-docid]", "div[class*='job']", "div[class*='gws-plugins-horizon-jobs']",
                     "div[jscontroller]", "div[jsname]", "div[role='list']", "div[data-ved]",
-                    "h3", "a[href*='/jobs']",
+                    "h3", "a[href*='/jobs']", "div[class*='card']", "li[class*='job']",
+                    "div[role='listitem']", "div[role='option']", "a[href*='https']",
+                    "div[class*='result']", "div[class*='listing']", "div[class*='item']",
+                    "span[class*='title']", "div[class*='title']",
                 ]
-                found_elements = 0
-                found_selector = ""
                 for sel in job_selectors:
-                    count = await page.locator(sel).count()
-                    logger.info("PW: selector '%s' found %d elements", sel, count)
-                    if count > found_elements:
-                        found_elements = count
-                        found_selector = sel
+                    try:
+                        count = await page.locator(sel).count()
+                        if count > 0:
+                            logger.info("PW: selector OK '%s' = %d elements", sel, count)
+                    except Exception:
+                        pass
 
-                logger.info("PW: best selector: '%s' with %d elements", found_selector, found_elements)
                 await page.screenshot(path=str(debug_dir / f"03_before_scroll_{safe_query}.png"))
 
                 for i in range(5):
@@ -447,69 +481,57 @@ class GoogleJobsScraper(BaseScraper):
 
                         const extractors = [
                             () => {
-                                const cards = document.querySelectorAll('[data-docid]');
-                                return Array.from(cards).map(c => {
-                                    const titleEl = c.querySelector('h3, h2, [class*="title"], a');
-                                    const title = titleEl ? (titleEl.innerText || titleEl.textContent || '').trim() : '';
-                                    if (!title || title.length < 3) return null;
-                                    if (seen.has(title)) return null;
+                                const cards = document.querySelectorAll('a[href*="viewjob"], a[href*="/jobs/"], a[href*="job?"]');
+                                return Array.from(cards).map(a => {
+                                    const title = (a.innerText || a.textContent || '').trim();
+                                    if (!title || title.length < 5 || seen.has(title)) return null;
                                     seen.add(title);
-
-                                    const companyEl = c.querySelector('[class*="company"], [class*="employer"], [class*="Qk80vf"]');
-                                    const company = companyEl ? companyEl.innerText.trim() : '';
-
-                                    const locEl = c.querySelector('[class*="location"], [class*="loc"], [class*="ragvQd"]');
-                                    const location = locEl ? locEl.innerText.trim() : '';
-
-                                    const salaryEl = c.querySelector('[class*="salary"], [class*="QYpI6c"]');
-                                    const salaryText = salaryEl ? salaryEl.innerText.trim() : '';
-
-                                    const dateEl = c.querySelector('[class*="date"], [class*="K5hUy"], [class*="age"]');
-                                    const dateText = dateEl ? dateEl.innerText.trim() : '';
-
-                                    const link = c.querySelector('a');
-                                    const url = link ? (link.href || '') : '';
-
-                                    return { title, company, location, salaryText, dateText, url };
+                                    const parent = a.closest('div,li') || a.parentElement;
+                                    const allText = parent ? parent.innerText : title;
+                                    const lines = allText.split('\\n').map(l => l.trim()).filter(l => l);
+                                    const company = lines.find(l => l !== title && l.length > 1 && l.length < 60) || '';
+                                    const location = lines.find(l => l !== title && l !== company && l.length > 1 && l.length < 80) || '';
+                                    return { title, company, location, salaryText: '', dateText: '', url: a.href || '' };
                                 }).filter(x => x !== null);
                             },
                             () => {
-                                const items = document.querySelectorAll('h3, h2');
-                                return Array.from(items).map(h => {
-                                    const title = (h.innerText || h.textContent || '').trim();
-                                    if (!title || title.length < 3 || seen.has(title)) return null;
+                                const candidates = document.querySelectorAll('[data-docid], [jscontroller], [class*="job"], [class*="result"]');
+                                return Array.from(candidates).map(el => {
+                                    const texts = [];
+                                    const walk = (node) => {
+                                        if (node.nodeType === 3) {
+                                            const t = (node.textContent || '').trim();
+                                            if (t) texts.push(t);
+                                        } else if (node.nodeType === 1) {
+                                            const tag = node.tagName.toLowerCase();
+                                            if (!['script','style','noscript'].includes(tag)) {
+                                                for (let child of node.childNodes) walk(child);
+                                            }
+                                        }
+                                    };
+                                    walk(el);
+                                    const title = texts[0] || '';
+                                    if (!title || title.length < 5 || seen.has(title)) return null;
                                     seen.add(title);
-
-                                    const container = h.closest('div,li') || h.parentElement;
-                                    const allText = container ? container.innerText : '';
-                                    const lines = allText.split('\\n').map(l => l.trim()).filter(l => l);
-                                    const company = lines.find(l => l !== title && l.length > 1 && l.length < 80) || '';
-
-                                    const link = (container || h).querySelector('a');
+                                    const company = texts.find(t => t !== title && t.length > 1 && t.length < 60) || '';
+                                    const link = el.querySelector('a');
                                     const url = link ? link.href : '';
-
                                     return { title, company, location: '', salaryText: '', dateText: '', url };
                                 }).filter(x => x !== null);
                             },
                             () => {
-                                const scripts = document.querySelectorAll('script');
-                                const results = [];
-                                for (const s of scripts) {
-                                    if (!s.textContent) continue;
-                                    const matches = s.textContent.match(/"jobTitle":"([^"]+)"/g);
-                                    if (!matches) continue;
-                                    for (const m of matches) {
-                                        try {
-                                            const data = JSON.parse('{' + m.replace(/"jobTitle"/g, '"title"') + '}');
-                                            const title = data.title;
-                                            if (!title || seen.has(title)) continue;
-                                            seen.add(title);
-                                            results.push({ title, company: '', location: '', salaryText: '', dateText: '', url: '' });
-                                        } catch(e) {}
-                                    }
-                                }
-                                return results;
-                            }
+                                const links = document.querySelectorAll('a');
+                                const jobLinks = Array.from(links).filter(a => {
+                                    const h = a.href || '';
+                                    return h.includes('/jobs') || h.includes('viewjob') || h.includes('job?');
+                                });
+                                return Array.from(jobLinks).map(a => {
+                                    const title = (a.innerText || a.textContent || '').trim();
+                                    if (!title || title.length < 5 || seen.has(title)) return null;
+                                    seen.add(title);
+                                    return { title, company: '', location: '', salaryText: '', dateText: '', url: a.href || '' };
+                                }).filter(x => x !== null);
+                            },
                         ];
 
                         for (const extract of extractors) {
@@ -533,8 +555,9 @@ class GoogleJobsScraper(BaseScraper):
                 await page.screenshot(path=str(debug_dir / f"05_final_{safe_query}.png"))
 
                 if not cards:
-                    body_text = await page.evaluate("document.body.innerText.substring(0, 2000)")
-                    logger.info("PW: page body preview: %s", body_text[:500].replace('\\n', ' '))
+                    body_text = await page.evaluate("document.body.innerText.substring(0, 4000)")
+                    logger.info("PW: page body preview (first 600 chars): %s",
+                                body_text[:600].replace('\\n', ' ').replace('\\u00a0', ' '))
 
                 return cards
             finally:
